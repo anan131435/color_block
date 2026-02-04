@@ -142,6 +142,23 @@ class ColorBlockGame extends FlameGame {
     scoreText.text = 'Score: $score';
   }
 
+  void updatePreview(DraggableBlock block) {
+    // Similar logic to attemptPlacement to find grid position
+    Vector2 blockTopLeft = block.absolutePosition - (block.size / 2);
+    Vector2 gridTopLeft = gridBoard.absolutePosition - (gridBoard.size / 2);
+    Vector2 relativePos = blockTopLeft - gridTopLeft;
+
+    int col = (relativePos.x / gridBoard.cellWidth).round();
+    int row = (relativePos.y / gridBoard.cellHeight).round();
+    Vector2 gridIndex = Vector2(col.toDouble(), row.toDouble());
+
+    gridBoard.showPreview(block.shapeOffsets, gridIndex, block.color);
+  }
+
+  void clearPreview() {
+    gridBoard.clearPreview();
+  }
+
   void checkEndGame() {
     // If activeBlocks is empty, we just spawned/will spawn.
     if (activeBlocks.isEmpty) return;

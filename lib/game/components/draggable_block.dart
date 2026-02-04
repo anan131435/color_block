@@ -86,11 +86,14 @@ class DraggableBlock extends PositionComponent
   void onDragUpdate(DragUpdateEvent event) {
     // Keep moving with the finger (delta)
     position += event.localDelta;
+    game.updatePreview(this);
   }
 
   @override
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
+    game.clearPreview();
+
     // Check if valid drop
     // We need to convert our Center position to grid coordinates
     // We need access to GridBoard.
