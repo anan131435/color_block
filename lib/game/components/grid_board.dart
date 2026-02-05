@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../config.dart';
+import 'block_renderer.dart';
 
 class GridBoard extends PositionComponent {
   late List<List<Color?>> gridState;
@@ -124,11 +125,7 @@ class GridBoard extends PositionComponent {
 
         // Draw occupied cell
         if (gridState[r][c] != null) {
-          paint.color = gridState[r][c]!;
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(rect.deflate(2), const Radius.circular(4)),
-            paint,
-          );
+          BlockRenderer.render(canvas, rect, gridState[r][c]!);
         }
       }
     }
@@ -154,7 +151,6 @@ class GridBoard extends PositionComponent {
 
     // Draw Preview
     if (_previewShape != null && _previewColor != null) {
-      paint.color = _previewColor!;
       for (var p in _previewShape!) {
         final rect = Rect.fromLTWH(
           p.x * cellWidth,
@@ -162,10 +158,7 @@ class GridBoard extends PositionComponent {
           cellWidth,
           cellHeight,
         );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect.deflate(2), const Radius.circular(4)),
-          paint,
-        );
+        BlockRenderer.render(canvas, rect, _previewColor!);
       }
     }
   }

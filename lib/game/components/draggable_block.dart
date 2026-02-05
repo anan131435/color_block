@@ -5,6 +5,7 @@ import 'package:flame/effects.dart';
 import 'package:flutter/material.dart';
 
 import '../color_block_game.dart';
+import 'block_renderer.dart';
 
 class DraggableBlock extends PositionComponent
     with DragCallbacks, HasGameReference<ColorBlockGame> {
@@ -51,8 +52,6 @@ class DraggableBlock extends PositionComponent
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final paint = Paint()..color = color;
-    final r = 4.0;
 
     for (var v in shapeOffsets) {
       final rect = Rect.fromLTWH(
@@ -61,11 +60,7 @@ class DraggableBlock extends PositionComponent
         cellSize,
         cellSize,
       );
-      // Deflate slightly for gap
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect.deflate(2), Radius.circular(r)),
-        paint,
-      );
+      BlockRenderer.render(canvas, rect, color);
     }
   }
 
