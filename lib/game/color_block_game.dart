@@ -28,7 +28,11 @@ class ColorBlockGame extends FlameGame {
 
     // Initialize Audio
     FlameAudio.audioCache.prefix = 'assets/sound/';
-    await FlameAudio.audioCache.load('clear_oneline.wav');
+    await FlameAudio.audioCache.loadAll([
+      'clear_oneline.wav',
+      'click.wav',
+      'failed_game.wav',
+    ]);
 
     // Add Score
     scoreText = TextComponent(
@@ -124,6 +128,7 @@ class ColorBlockGame extends FlameGame {
 
     if (gridBoard.canPlace(block.shapeOffsets, gridIndex)) {
       int points = gridBoard.place(block.shapeOffsets, gridIndex, block.color);
+      FlameAudio.play('click.wav');
       addScore(points);
 
       // Remove from active list
@@ -190,6 +195,7 @@ class ColorBlockGame extends FlameGame {
 
     if (!canMove) {
       // Game Over
+      FlameAudio.play('failed_game.wav');
       overlays.add('GameOver');
     }
   }

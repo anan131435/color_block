@@ -225,6 +225,7 @@ class GridBoard extends PositionComponent {
     }
 
     if (rowsToClear.isEmpty && colsToClear.isEmpty) {
+      HapticFeedback.lightImpact();
       return 10; // Just placement score
     }
 
