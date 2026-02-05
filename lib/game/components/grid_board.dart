@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../config.dart';
@@ -231,6 +232,7 @@ class GridBoard extends PositionComponent {
     if (rowsToClear.isNotEmpty || colsToClear.isNotEmpty) {
       // Trigger vibration
       HapticFeedback.mediumImpact();
+      FlameAudio.play('clear_oneline.wav');
 
       for (int r in rowsToClear) {
         for (int c = 0; c < GameConfigFile.gridCols; c++) {
