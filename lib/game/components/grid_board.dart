@@ -106,11 +106,25 @@ class GridBoard extends PositionComponent {
     }
   }
 
+  // Animation State
+  final List<_ClearAnimation> _activeAnimations = [];
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    // Update animations
+    for (var anim in _activeAnimations) {
+      anim.progress += dt;
+    }
+    _activeAnimations.removeWhere((anim) => anim.progress >= anim.duration);
+  }
+
   @override
   void render(Canvas canvas) {
     super.render(canvas);
     final paint = Paint()..style = PaintingStyle.fill;
 
+    // Draw grid background and static cells
     for (int r = 0; r < GameConfigFile.gridRows; r++) {
       for (int c = 0; c < GameConfigFile.gridCols; c++) {
         final rect = Rect.fromLTWH(
@@ -128,6 +142,49 @@ class GridBoard extends PositionComponent {
         if (gridState[r][c] != null) {
           BlockRenderer.render(canvas, rect, gridState[r][c]!);
         }
+      }
+    }
+
+    // Draw Active Animations (Over normal cells)
+    for (var anim in _activeAnimations) {
+      double t = (anim.progress / anim.duration).clamp(0.0, 1.0);
+
+      // Animation values
+      // 1. Brightness: White overlay fading out
+      // 2. Scale: 1.0 -> 0.9
+      // 3. Opacity: 1.0 -> 0.0 (Fast fade out in last phase)
+
+      double scale = lerpDouble(1.0, 0.9, t)!;
+      double opacity = (1.0 - t).clamp(0.0, 1.0);
+
+      // White flash intensity
+      double flash = (1.0 - t * 3).clamp(0.0, 0.5);
+
+      for (var cell in anim.cells) {
+        final rect = Rect.fromLTWH(
+          cell.col * cellWidth,
+          cell.row * cellHeight,
+          cellWidth,
+          cellHeight,
+        );
+
+        canvas.save();
+        // Transform for scale
+        final center = rect.center;
+        canvas.translate(center.dx, center.dy);
+        canvas.scale(scale);
+        canvas.translate(-center.dx, -center.dy);
+
+        // Draw Block
+        BlockRenderer.render(canvas, rect, cell.color.withOpacity(opacity));
+
+        // Draw Flash
+        if (flash > 0) {
+          paint.color = Colors.white.withOpacity(flash);
+          canvas.drawRect(rect.deflate(2), paint);
+        }
+
+        canvas.restore();
       }
     }
 
@@ -235,15 +292,29 @@ class GridBoard extends PositionComponent {
       HapticFeedback.mediumImpact();
       FlameAudio.play('clear_oneline.wav');
 
+      // Capture cells for animation
+      List<({int row, int col, Color color})> animatingCells = [];
+
       for (int r in rowsToClear) {
         for (int c = 0; c < GameConfigFile.gridCols; c++) {
-          gridState[r][c] = null; // Visual cleanup needed? Animations?
+          if (gridState[r][c] != null) {
+            animatingCells.add((row: r, col: c, color: gridState[r][c]!));
+            gridState[r][c] = null;
+          }
         }
       }
       for (int c in colsToClear) {
         for (int r = 0; r < GameConfigFile.gridRows; r++) {
-          gridState[r][c] = null;
+          if (gridState[r][c] != null) {
+            animatingCells.add((row: r, col: c, color: gridState[r][c]!));
+            gridState[r][c] = null;
+          }
         }
+      }
+
+      // Add to animation list
+      if (animatingCells.isNotEmpty) {
+        _activeAnimations.add(_ClearAnimation(cells: animatingCells));
       }
     }
 
@@ -256,4 +327,12 @@ class GridBoard extends PositionComponent {
 
     return score;
   }
+}
+
+class _ClearAnimation {
+  final List<({int row, int col, Color color})> cells;
+  double progress = 0.0;
+  final double duration = 0.4; // seconds
+
+  _ClearAnimation({required this.cells});
 }
