@@ -120,7 +120,7 @@ class GridBoard extends PositionComponent {
         );
 
         // Draw background cell
-        paint.color = const Color(0xFF2C2C2C);
+        paint.color = const Color(0xFF151F38);
         canvas.drawRect(rect.deflate(2), paint);
 
         // Draw occupied cell

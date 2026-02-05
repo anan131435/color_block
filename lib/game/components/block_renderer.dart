@@ -2,86 +2,127 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class BlockRenderer {
-  /// Renders a single 3D-styled block within [rect] using [color].
-  /// [opacity] allows for transparency (e.g., for previews).
+  /// Renders a single "Faceted Gem" styled block.
+  /// [rect]: The bounds of the cell to draw in.
+  /// [color]: The base color of the gem.
+  /// [opacity]: Transparency, mostly for previews.
   static void render(
     Canvas canvas,
     Rect rect,
     Color color, {
     double opacity = 1.0,
   }) {
-    // 1. Deflate slightly for gap between blocks
-    final effectiveRect = rect.deflate(2.0);
-    final rrect = RRect.fromRectAndRadius(
-      effectiveRect,
-      const Radius.circular(6.0),
-    );
+    // 1. Spacing: a small gap between blocks
+    final cellRect = rect.deflate(1.0);
 
-    // 2. Prepare Colors (HSL for lightness adjustment)
+    // If fully transparent, don't draw
+    if (opacity <= 0.0) return;
+
+    // 2. Bevel Configuration
+    // The width of the slanted edge.
+    final bevel = 6.0;
+
+    // 3. Prepare Colors
+    // We create variants of the base color for the facets.
     final hsl = HSLColor.fromColor(color);
 
-    // Lighter top-left
-    final lightColor = hsl
-        .withLightness((hsl.lightness + 0.15).clamp(0.0, 1.0))
+    // Top: Very bright (Highlight)
+    final topColor = hsl
+        .withLightness((hsl.lightness + 0.3).clamp(0.0, 1.0))
         .toColor()
         .withOpacity(opacity);
-    // Base color
-    final baseColor = color.withOpacity(opacity);
-    // Darker bottom-right
-    final darkColor = hsl
+    // Left: Bright
+    final leftColor = hsl
+        .withLightness((hsl.lightness + 0.1).clamp(0.0, 1.0))
+        .toColor()
+        .withOpacity(opacity);
+    // Center: Base
+    final centerColor = color.withOpacity(opacity);
+    // Right: Shadow
+    final rightColor = hsl
         .withLightness((hsl.lightness - 0.15).clamp(0.0, 1.0))
         .toColor()
         .withOpacity(opacity);
+    // Bottom: Dark Shadow
+    final bottomColor = hsl
+        .withLightness((hsl.lightness - 0.3).clamp(0.0, 1.0))
+        .toColor()
+        .withOpacity(opacity);
 
-    // 3. Main Body Gradient
-    final paint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [lightColor, baseColor, darkColor],
-      ).createShader(effectiveRect);
+    // 4. Coordinates
+    // Outer corners
+    final pixelLeft = cellRect.left;
+    final pixelRight = cellRect.right;
+    final pixelTop = cellRect.top;
+    final pixelBottom = cellRect.bottom;
 
-    canvas.drawRRect(rrect, paint);
+    // Inner corners (deflated by bevel)
+    final innerLeft = pixelLeft + bevel;
+    final innerRight = pixelRight - bevel;
+    final innerTop = pixelTop + bevel;
+    final innerBottom = pixelBottom - bevel;
 
-    // 4. Inner Highlights/Shadows (Bevel effect)
-    // Top-Left Light Rim
-    final highlightPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.center,
-        colors: [Colors.white.withOpacity(0.5 * opacity), Colors.transparent],
-      ).createShader(effectiveRect);
+    // 5. Draw Facets using Paths
+    final paint = Paint()..style = PaintingStyle.fill;
 
-    canvas.drawRRect(rrect.deflate(1.0), highlightPaint);
+    // TOP Facet (Trapezoid)
+    if (innerTop < innerBottom) {
+      // Ensure space exists
+      final topPath = Path()
+        ..moveTo(pixelLeft, pixelTop)
+        ..lineTo(pixelRight, pixelTop)
+        ..lineTo(innerRight, innerTop)
+        ..lineTo(innerLeft, innerTop)
+        ..close();
+      paint.color = topColor;
+      canvas.drawPath(topPath, paint);
 
-    // Bottom-Right Dark Rim
-    final shadowPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..shader = LinearGradient(
-        begin: Alignment.center,
-        end: Alignment.bottomRight,
-        colors: [Colors.transparent, Colors.black.withOpacity(0.3 * opacity)],
-      ).createShader(effectiveRect);
+      // BOTTOM Facet
+      final bottomPath = Path()
+        ..moveTo(pixelLeft, pixelBottom)
+        ..lineTo(pixelRight, pixelBottom)
+        ..lineTo(innerRight, innerBottom)
+        ..lineTo(innerLeft, innerBottom)
+        ..close();
+      paint.color = bottomColor;
+      canvas.drawPath(bottomPath, paint);
 
-    canvas.drawRRect(rrect.deflate(1.0), shadowPaint);
+      // LEFT Facet
+      final leftPath = Path()
+        ..moveTo(pixelLeft, pixelTop)
+        ..lineTo(innerLeft, innerTop)
+        ..lineTo(innerLeft, innerBottom)
+        ..lineTo(pixelLeft, pixelBottom)
+        ..close();
+      paint.color = leftColor;
+      canvas.drawPath(leftPath, paint);
 
-    // Optional: Center Gloss
-    // A small radial gradient at top-left to simulate light reflection
-    /*
-    final glossRect = Rect.fromLTWH(
-      effectiveRect.left + effectiveRect.width * 0.1,
-      effectiveRect.top + effectiveRect.height * 0.1,
-      effectiveRect.width * 0.4,
-      effectiveRect.height * 0.4,
-    );
-     final glossPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [Colors.white.withOpacity(0.2 * opacity), Colors.transparent],
-      ).createShader(glossRect);
-    canvas.drawOval(glossRect, glossPaint);
-    */
+      // RIGHT Facet
+      final rightPath = Path()
+        ..moveTo(pixelRight, pixelTop)
+        ..lineTo(innerRight, innerTop)
+        ..lineTo(innerRight, innerBottom)
+        ..lineTo(pixelRight, pixelBottom)
+        ..close();
+      paint.color = rightColor;
+      canvas.drawPath(rightPath, paint);
+
+      // CENTER Face (Rect)
+      final centerRect = Rect.fromLTRB(
+        innerLeft,
+        innerTop,
+        innerRight,
+        innerBottom,
+      );
+      paint.color = centerColor;
+      canvas.drawRect(centerRect, paint);
+
+      // Optional: Add a subtle gradient to the center face for more "gem" depth
+      // Or a small shine path
+    } else {
+      // Fallback if too small for bevels (rare)
+      paint.color = centerColor;
+      canvas.drawRect(cellRect, paint);
+    }
   }
 }

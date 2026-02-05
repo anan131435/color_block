@@ -5,10 +5,12 @@ class GameConfigFile {
   static const int gridRows = 8;
   static const int gridCols = 8;
 
-  static const Color color1 = Color(0xFFFF5252); // Red
-  static const Color color2 = Color(0xFF69F0AE); // Green
-  static const Color color3 = Color(0xFFFFD740); // Yellow
-  static const Color color4 = Color(0xFF448AFF); // Blue
+  // Gem Colors
+  static const Color color1 = Color(0xFFE53935); // Gem Red
+  static const Color color2 = Color(0xFF76FF03); // Gem Green (Lime)
+  static const Color color3 = Color(0xFFFFC400); // Gem Yellow (Amber)
+  static const Color color4 = Color(0xFF2979FF); // Gem Blue
+  // Add more varieties if needed, but these match the reference vibes (Red, Green, Yellow)
 
   static const List<Color> blockColors = [color1, color2, color3, color4];
 
