@@ -20,7 +20,7 @@ class ColorBlockGame extends FlameGame {
   double get gameHeight => size.y;
 
   @override
-  Color backgroundColor() => const Color(0xFF203055);
+  Color backgroundColor() => const Color(0xFF304797);
 
   @override
   Future<void> onLoad() async {
