@@ -4,6 +4,7 @@ import 'package:flame_audio/flame_audio.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'config.dart';
+import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
 
@@ -12,8 +13,13 @@ class ColorBlockGame extends FlameGame {
   final List<DraggableBlock> activeBlocks = [];
 
   // Score
+  // Score
   int score = 0;
+  // High Score
+  int highScore = 0;
+
   late TextComponent scoreText;
+  late TextComponent highScoreText;
 
   // Layout
   double get gameWidth => size.x;
@@ -34,15 +40,35 @@ class ColorBlockGame extends FlameGame {
       'failed_game.wav',
     ]);
 
-    // Add Score
+    // Update Streak
+    await PrefsManager.updateStreak();
+
+    // Load High Score and display
+    highScore = await PrefsManager.getHighScore();
+    highScoreText = TextComponent(
+      text: '🏆 $highScore',
+      position: Vector2(20, 50),
+      anchor: Anchor.topLeft,
+      textRenderer: TextPaint(
+        style: const TextStyle(
+          color: Color(0xFFE6B73F),
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Noto Color Emoji', // Fallback
+        ),
+      ),
+    );
+    add(highScoreText);
+
+    // Add Score (Current Game)
     scoreText = TextComponent(
-      text: 'Score: 0',
-      position: Vector2(gameWidth / 2, 50),
+      text: '0',
+      position: Vector2(gameWidth / 2, 150),
       anchor: Anchor.topCenter,
       textRenderer: TextPaint(
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 32,
+          fontSize: 48,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -149,7 +175,12 @@ class ColorBlockGame extends FlameGame {
 
   void addScore(int points) {
     score += points;
-    scoreText.text = 'Score: $score';
+    scoreText.text = '$score';
+    if (score > highScore) {
+      highScore = score;
+      highScoreText.text = '🏆 $highScore';
+      PrefsManager.saveHighScore(score);
+    }
   }
 
   void updatePreview(DraggableBlock block) {
@@ -202,8 +233,14 @@ class ColorBlockGame extends FlameGame {
 
   void reset() {
     score = 0;
-    scoreText.text = 'Score: 0';
+    scoreText.text = '0';
+    // Refresh high score just in case
+    PrefsManager.getHighScore().then((val) {
+      highScore = val;
+      highScoreText.text = '🏆 $highScore';
+    });
     gridBoard.clear();
+    PrefsManager.updateStreak();
 
     // Remove existing draggable blocks
     // We iterate backwards or make a copy to avoid modification issues
