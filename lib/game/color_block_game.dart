@@ -52,7 +52,7 @@ class ColorBlockGame extends FlameGame {
       textRenderer: TextPaint(
         style: const TextStyle(
           color: Color(0xFFE6B73F),
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: FontWeight.bold,
           fontFamily: 'Noto Color Emoji', // Fallback
         ),
@@ -63,7 +63,7 @@ class ColorBlockGame extends FlameGame {
     // Add Score (Current Game)
     scoreText = TextComponent(
       text: '0',
-      position: Vector2(gameWidth / 2, 150),
+      position: Vector2(gameWidth / 2, 100),
       anchor: Anchor.topCenter,
       textRenderer: TextPaint(
         style: const TextStyle(
