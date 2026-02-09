@@ -64,7 +64,7 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   children: [
                     GameButton(
-                      text: "Journey",
+                      text: "Puzzle",
                       icon: Icons.location_on_rounded,
                       color: const Color(0xFFFFB347),
                       shadowColor: const Color(0xFFD8781B),
