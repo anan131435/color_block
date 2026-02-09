@@ -2,14 +2,28 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'game/color_block_game.dart';
 
-class GamePage extends StatelessWidget {
-  const GamePage({super.key});
+class GamePage extends StatefulWidget {
+  final bool isJourneyMode;
+  const GamePage({super.key, this.isJourneyMode = false});
+
+  @override
+  State<GamePage> createState() => _GamePageState();
+}
+
+class _GamePageState extends State<GamePage> {
+  late ColorBlockGame _game;
+
+  @override
+  void initState() {
+    super.initState();
+    _game = ColorBlockGame(isJourneyMode: widget.isJourneyMode);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: GameWidget<ColorBlockGame>(
-        game: ColorBlockGame(),
+        game: _game,
         overlayBuilderMap: {
           'GameOver': (BuildContext context, ColorBlockGame game) {
             return Center(
@@ -38,11 +52,11 @@ class GamePage extends StatelessWidget {
                     const SizedBox(height: 30),
                     ElevatedButton(
                       onPressed: () {
-                        game.overlays.remove('GameOver');
-                        // Reset game logic
-                        // Easiest is to replace the game instance or call reset
-                        // Since we are inside GameWidget, we can call a method on game
-                        game.reset();
+                        if (context.mounted &&
+                            game.overlays.isActive('GameOver')) {
+                          game.overlays.remove('GameOver');
+                          game.reset();
+                        }
                       },
                       child: const Text('Restart'),
                     ),

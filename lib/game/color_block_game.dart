@@ -9,8 +9,11 @@ import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
 
 class ColorBlockGame extends FlameGame {
+  final bool isJourneyMode;
   late GridBoard gridBoard;
   final List<DraggableBlock> activeBlocks = [];
+
+  ColorBlockGame({this.isJourneyMode = false});
 
   // Score
   // Score
@@ -28,17 +31,23 @@ class ColorBlockGame extends FlameGame {
   @override
   Color backgroundColor() => const Color(0xFF304797);
 
+  late AudioPool clickPool;
+  late AudioPool swipPool;
+  late AudioPool clearPool;
+
   @override
   Future<void> onLoad() async {
     super.onLoad();
 
     // Initialize Audio
     FlameAudio.audioCache.prefix = 'assets/sound/';
-    await FlameAudio.audioCache.loadAll([
-      'clear_oneline.wav',
-      'click.wav',
-      'failed_game.wav',
-    ]);
+
+    // Create pools for low-latency sound effects
+    clickPool = await FlameAudio.createPool('click.mp3', maxPlayers: 4);
+    swipPool = await FlameAudio.createPool('swip.wav', maxPlayers: 4);
+    clearPool = await FlameAudio.createPool('clear_oneline.wav', maxPlayers: 4);
+
+    await FlameAudio.audioCache.loadAll(['failed_game.wav']);
 
     // Update Streak
     await PrefsManager.updateStreak();
@@ -88,8 +97,26 @@ class ColorBlockGame extends FlameGame {
 
     add(gridBoard);
 
+    if (isJourneyMode) {
+      preFillGrid();
+    }
+
     // Spawn initial blocks
     spawnBlocks();
+  }
+
+  void preFillGrid() {
+    final rng = Random();
+    // Pre-fill about 15-20 random cells
+    int cellsToFill = 15 + rng.nextInt(6);
+    for (int i = 0; i < cellsToFill; i++) {
+      int r = rng.nextInt(GameConfigFile.gridRows);
+      int c = rng.nextInt(GameConfigFile.gridCols);
+      if (gridBoard.gridState[r][c] == null) {
+        gridBoard.gridState[r][c] = GameConfigFile
+            .blockColors[rng.nextInt(GameConfigFile.blockColors.length)];
+      }
+    }
   }
 
   void spawnBlocks() {
@@ -97,7 +124,7 @@ class ColorBlockGame extends FlameGame {
     activeBlocks.clear(); // Components remove themselves on place
 
     // We need 3 slots at the bottom
-    double poolY = gridBoard.position.y + gridBoard.height / 2 + 50;
+    double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
     double slotWidth = gameWidth / 3;
 
     for (int i = 0; i < 3; i++) {
@@ -154,7 +181,7 @@ class ColorBlockGame extends FlameGame {
 
     if (gridBoard.canPlace(block.shapeOffsets, gridIndex)) {
       int points = gridBoard.place(block.shapeOffsets, gridIndex, block.color);
-      FlameAudio.play('click.wav');
+      clickPool.start();
       addScore(points);
 
       // Remove from active list
@@ -240,6 +267,9 @@ class ColorBlockGame extends FlameGame {
       highScoreText.text = '🏆 $highScore';
     });
     gridBoard.clear();
+    if (isJourneyMode) {
+      preFillGrid();
+    }
     PrefsManager.updateStreak();
 
     // Remove existing draggable blocks

@@ -67,6 +67,7 @@ class DraggableBlock extends PositionComponent
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
+    game.swipPool.start();
     priority = 100; // Bring to front
     // Scale up
     add(ScaleEffect.to(Vector2.all(1.0), EffectController(duration: 0.1)));

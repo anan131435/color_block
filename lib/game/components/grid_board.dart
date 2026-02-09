@@ -1,12 +1,14 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
-import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../config.dart';
 import 'block_renderer.dart';
 
-class GridBoard extends PositionComponent {
+import '../color_block_game.dart';
+
+class GridBoard extends PositionComponent
+    with HasGameReference<ColorBlockGame> {
   late List<List<Color?>> gridState;
 
   GridBoard({super.position, super.size}) {
@@ -290,7 +292,7 @@ class GridBoard extends PositionComponent {
     if (rowsToClear.isNotEmpty || colsToClear.isNotEmpty) {
       // Trigger vibration
       HapticFeedback.mediumImpact();
-      FlameAudio.play('clear_oneline.wav');
+      game.clearPool.start();
 
       // Capture cells for animation
       List<({int row, int col, Color color})> animatingCells = [];

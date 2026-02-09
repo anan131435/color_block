@@ -74,12 +74,15 @@ class _HomePageState extends State<HomePage> {
                         end: Alignment.bottomCenter,
                       ),
                       onPressed: () {
-                        // Placeholder action
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Journey Mode Coming Soon!"),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const GamePage(isJourneyMode: true),
                           ),
-                        );
+                        ).then((_) {
+                          _loadStats();
+                        });
                       },
                     ),
                     const SizedBox(height: 20),
@@ -109,7 +112,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const Spacer(),
-              // Bottom Banner (Ad placeholder) - Removed by user request/edits
             ],
           ),
         ),
