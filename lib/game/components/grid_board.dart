@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../config.dart';
 import 'block_renderer.dart';
 
@@ -284,14 +283,11 @@ class GridBoard extends PositionComponent
     }
 
     if (rowsToClear.isEmpty && colsToClear.isEmpty) {
-      HapticFeedback.lightImpact();
       return 10; // Just placement score
     }
 
     // Clear Logic
     if (rowsToClear.isNotEmpty || colsToClear.isNotEmpty) {
-      // Trigger vibration
-      HapticFeedback.mediumImpact();
       game.clearPool.start();
 
       // Capture cells for animation

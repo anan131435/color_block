@@ -3,6 +3,7 @@ import 'package:flame/game.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'config.dart';
 import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
@@ -183,6 +184,15 @@ class ColorBlockGame extends FlameGame {
       int points = gridBoard.place(block.shapeOffsets, gridIndex, block.color);
       clickPool.start();
       addScore(points);
+
+      // Trigger vibration feedback
+      if (points > 10) {
+        // Clear lines (Score is 10 + totalLines * 100 + bonus)
+        HapticFeedback.vibrate();
+      } else {
+        // Just place block (Score is 10)
+        HapticFeedback.heavyImpact();
+      }
 
       // Remove from active list
       activeBlocks.remove(block);

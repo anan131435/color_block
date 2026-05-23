@@ -1,5 +1,5 @@
+import 'package:color_block/home_page.dart';
 import 'package:flutter/material.dart';
-import 'home_second_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Block Puzzle',
       theme: ThemeData(brightness: Brightness.dark, primarySwatch: Colors.blue),
-      home: const HomeSecondPage(),
+      home: const HomePage(),
     );
   }
 }
