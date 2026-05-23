@@ -64,7 +64,7 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   children: [
                     GameButton(
-                      text: "Journey",
+                      text: "Puzzle",
                       icon: Icons.location_on_rounded,
                       color: const Color(0xFFFFB347),
                       shadowColor: const Color(0xFFD8781B),
@@ -74,12 +74,15 @@ class _HomePageState extends State<HomePage> {
                         end: Alignment.bottomCenter,
                       ),
                       onPressed: () {
-                        // Placeholder action
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Journey Mode Coming Soon!"),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const GamePage(isJourneyMode: true),
                           ),
-                        );
+                        ).then((_) {
+                          _loadStats();
+                        });
                       },
                     ),
                     const SizedBox(height: 20),
@@ -109,7 +112,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const Spacer(),
-              // Bottom Banner (Ad placeholder) - Removed by user request/edits
             ],
           ),
         ),
