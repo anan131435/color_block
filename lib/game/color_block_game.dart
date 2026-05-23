@@ -9,6 +9,7 @@ import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
 import 'components/feedback_text_effect.dart';
+import 'components/relaxing_text.dart';
 
 class ColorBlockGame extends FlameGame {
   final bool isJourneyMode;
@@ -105,6 +106,21 @@ class ColorBlockGame extends FlameGame {
 
     // Spawn initial blocks
     spawnBlocks();
+
+    // Add "RELAXING" text component at the bottom margin of the screen
+    // double relaxingY = gameHeight - 60;
+    // Safety check: ensure it doesn't overlap the candidate blocks pool if the screen is very short.
+    // The candidate blocks are spawned centered at poolY + 50, with a max visual size bounded to cellSize * 2.2.
+    // So the pool bottom bounds are roughly poolY + 50 + gridBoard.cellWidth * 1.1.
+    // double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
+    // double poolBottom = poolY + 50 + gridBoard.cellWidth * 1.1;
+    // if (relaxingY < poolBottom + 30) {
+    //   relaxingY = poolBottom + 30; // Safety padding fallback
+    // }
+
+    // add(RelaxingText(
+    //   position: Vector2(gameWidth / 2, relaxingY),
+    // ));
   }
 
   void preFillGrid() {
