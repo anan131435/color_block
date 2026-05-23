@@ -8,6 +8,7 @@ import 'config.dart';
 import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
+import 'components/feedback_text_effect.dart';
 
 class ColorBlockGame extends FlameGame {
   final bool isJourneyMode;
@@ -272,10 +273,24 @@ class ColorBlockGame extends FlameGame {
   Future<void> _playClearSequence(int points) async {
     try {
       FlameAudio.play('clear_oneline.wav');
+      
+      // Calculate screen center above the board for visual pop-up
+      final Vector2 textPos = Vector2(gameWidth / 2, gameHeight / 2 - 50);
+
       if (points == 110) {
         FlameAudio.play('great.mp3');
+        add(FeedbackTextEffect(
+          text: 'GREAT!',
+          textColor: const Color(0xFFFFEB3B), // Yellow like "COLOR" on home page
+          position: textPos,
+        ));
       } else if (points >= 260) {
         FlameAudio.play('excellent.mp3');
+        add(FeedbackTextEffect(
+          text: 'EXCELLENT!!',
+          textColor: const Color(0xFFFF5722), // Orange/Red like "BLOCK" on home page
+          position: textPos,
+        ));
       }
     } catch (e) {
       print('Error playing clear sound sequence: $e');
