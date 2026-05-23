@@ -23,6 +23,7 @@ class ColorBlockGame extends FlameGame {
   int score = 0;
   // High Score
   int highScore = 0;
+  int comboCount = 0;
 
   late TextComponent scoreText;
   late TextComponent highScoreText;
@@ -49,8 +50,14 @@ class ColorBlockGame extends FlameGame {
     clickPool = await FlameAudio.createPool('click.mp3', maxPlayers: 4);
     swipPool = await FlameAudio.createPool('swip.wav', maxPlayers: 4);
     clearPool = await FlameAudio.createPool('clear_oneline.wav', maxPlayers: 4);
-
-    await FlameAudio.audioCache.loadAll(['failed_game.wav', 'clear_oneline.wav', 'great.mp3', 'excellent.mp3']);
+    await FlameAudio.audioCache.loadAll([
+      'failed_game.wav',
+      'clear_oneline.wav',
+      'good.mp3',
+      'great.mp3',
+      'excellent.mp3',
+      'comob.mp3',
+    ]);
 
     // Update Streak
     await PrefsManager.updateStreak();
@@ -200,6 +207,14 @@ class ColorBlockGame extends FlameGame {
     if (gridBoard.canPlace(block.shapeOffsets, gridIndex)) {
       int points = gridBoard.place(block.shapeOffsets, gridIndex, block.color);
       clickPool.start();
+
+      // Update turn-by-turn combo count
+      if (points > 10) {
+        comboCount++;
+      } else {
+        comboCount = 0;
+      }
+
       addScore(points);
 
       // Trigger vibration feedback and play audio sequence
@@ -290,23 +305,50 @@ class ColorBlockGame extends FlameGame {
     try {
       FlameAudio.play('clear_oneline.wav');
       
+      // Calculate lines cleared based on score points
+      int linesCleared = 0;
+      if (points == 110) linesCleared = 1;
+      else if (points == 260) linesCleared = 2;
+      else if (points == 410) linesCleared = 3;
+      else if (points == 560) linesCleared = 4;
+
+      if (linesCleared == 0) return;
+
       // Calculate screen center above the board for visual pop-up
       final Vector2 textPos = Vector2(gameWidth / 2, gameHeight / 2 - 50);
 
-      if (points == 110) {
-        FlameAudio.play('great.mp3');
+      // Play combo sound if consecutive turns are cleared
+      if (comboCount >= 2) {
+        FlameAudio.play('comob.mp3');
         add(FeedbackTextEffect(
-          text: 'GREAT!',
-          textColor: const Color(0xFFFFEB3B), // Yellow like "COLOR" on home page
+          text: 'COMBO x$comboCount!',
+          textColor: const Color(0xFF00E5FF), // Cyan for combos
           position: textPos,
         ));
-      } else if (points >= 260) {
-        FlameAudio.play('excellent.mp3');
-        add(FeedbackTextEffect(
-          text: 'EXCELLENT!!',
-          textColor: const Color(0xFFFF5722), // Orange/Red like "BLOCK" on home page
-          position: textPos,
-        ));
+      } else {
+        // Play multiclear sounds for single placements
+        if (linesCleared == 1) {
+          FlameAudio.play('good.mp3');
+          add(FeedbackTextEffect(
+            text: 'GOOD!',
+            textColor: const Color(0xFF00E676), // Vibrant green
+            position: textPos,
+          ));
+        } else if (linesCleared == 2) {
+          FlameAudio.play('great.mp3');
+          add(FeedbackTextEffect(
+            text: 'GREAT!',
+            textColor: const Color(0xFFFFEB3B), // Yellow like "COLOR" on home page
+            position: textPos,
+          ));
+        } else if (linesCleared >= 3) {
+          FlameAudio.play('excellent.mp3');
+          add(FeedbackTextEffect(
+            text: 'EXCELLENT!!',
+            textColor: const Color(0xFFFF5722), // Orange/Red like "BLOCK" on home page
+            position: textPos,
+          ));
+        }
       }
     } catch (e) {
       print('Error playing clear sound sequence: $e');
@@ -316,6 +358,7 @@ class ColorBlockGame extends FlameGame {
   void reset() {
     score = 0;
     scoreText.text = '0';
+    comboCount = 0; // Reset turn-by-turn combo
     // Refresh high score just in case
     PrefsManager.getHighScore().then((val) {
       highScore = val;
