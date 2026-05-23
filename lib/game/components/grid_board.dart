@@ -288,7 +288,6 @@ class GridBoard extends PositionComponent
 
     // Clear Logic
     if (rowsToClear.isNotEmpty || colsToClear.isNotEmpty) {
-      game.clearPool.start();
 
       // Capture cells for animation
       List<({int row, int col, Color color})> animatingCells = [];

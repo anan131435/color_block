@@ -48,7 +48,7 @@ class ColorBlockGame extends FlameGame {
     swipPool = await FlameAudio.createPool('swip.wav', maxPlayers: 4);
     clearPool = await FlameAudio.createPool('clear_oneline.wav', maxPlayers: 4);
 
-    await FlameAudio.audioCache.loadAll(['failed_game.wav']);
+    await FlameAudio.audioCache.loadAll(['failed_game.wav', 'clear_oneline.wav', 'great.mp3', 'excellent.mp3']);
 
     // Update Streak
     await PrefsManager.updateStreak();
@@ -185,10 +185,11 @@ class ColorBlockGame extends FlameGame {
       clickPool.start();
       addScore(points);
 
-      // Trigger vibration feedback
+      // Trigger vibration feedback and play audio sequence
       if (points > 10) {
         // Clear lines (Score is 10 + totalLines * 100 + bonus)
         HapticFeedback.vibrate();
+        _playClearSequence(points);
       } else {
         // Just place block (Score is 10)
         HapticFeedback.heavyImpact();
@@ -265,6 +266,19 @@ class ColorBlockGame extends FlameGame {
       // Game Over
       FlameAudio.play('failed_game.wav');
       overlays.add('GameOver');
+    }
+  }
+
+  Future<void> _playClearSequence(int points) async {
+    try {
+      FlameAudio.play('clear_oneline.wav');
+      if (points == 110) {
+        FlameAudio.play('great.mp3');
+      } else if (points >= 260) {
+        FlameAudio.play('excellent.mp3');
+      }
+    } catch (e) {
+      print('Error playing clear sound sequence: $e');
     }
   }
 
