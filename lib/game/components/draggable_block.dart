@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/effects.dart';
@@ -14,6 +15,7 @@ class DraggableBlock extends PositionComponent
   final double cellSize;
   Vector2 originalPosition;
   final VoidCallback onPlace;
+  late final double initialScale;
 
   DraggableBlock({
     required this.shapeOffsets,
@@ -32,8 +34,13 @@ class DraggableBlock extends PositionComponent
     width = (maxX + 1) * cellSize;
     height = (maxY + 1) * cellSize;
 
-    // Initial scale small
-    scale = Vector2.all(0.6);
+    // Calculate dynamic initial scale so it fits nicely in the slot visually
+    // We target a max visual size of cellSize * 2.2 for the block in the pool
+    double maxDisplayDimension = cellSize * 2.2;
+    double maxDim = max(width, height);
+    initialScale = min(0.6, maxDisplayDimension / maxDim);
+
+    scale = Vector2.all(initialScale);
   }
 
   @override
@@ -107,7 +114,7 @@ class DraggableBlock extends PositionComponent
           EffectController(duration: 0.2, curve: Curves.easeOut),
         ),
       );
-      add(ScaleEffect.to(Vector2.all(0.6), EffectController(duration: 0.2)));
+      add(ScaleEffect.to(Vector2.all(initialScale), EffectController(duration: 0.2)));
       priority = 0;
     }
   }

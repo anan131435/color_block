@@ -128,17 +128,35 @@ class ColorBlockGame extends FlameGame {
     double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
     double slotWidth = gameWidth / 3;
 
+    // Balanced spawn logic:
+    // Generate 3 shapes, ensuring at most 1 is "large" (size >= 5) to keep the game fun and easy.
+    List<List<Vector2>> chosenShapes = [];
+    int largeCount = 0;
+
     for (int i = 0; i < 3; i++) {
-      _spawnSingleBlock(i, slotWidth, poolY);
+      List<Vector2> shape;
+      if (largeCount >= 1) {
+        // If we already have a large block, force the next ones to be <= 4 (small or classic size 4)
+        shape = GameConfigFile.getRandomShapeFiltered(maxSize: 4);
+      } else {
+        shape = GameConfigFile.getRandomShape();
+      }
+
+      if (shape.length >= 5) {
+        largeCount++;
+      }
+      chosenShapes.add(shape);
+    }
+
+    for (int i = 0; i < 3; i++) {
+      _spawnSingleBlockWithShape(i, slotWidth, poolY, chosenShapes[i]);
     }
   }
 
-  void _spawnSingleBlock(int index, double slotWidth, double poolY) {
+  void _spawnSingleBlockWithShape(int index, double slotWidth, double poolY, List<Vector2> shape) {
     if (index < 0 || index >= 3) return;
 
     var rng = Random();
-    var shape =
-        GameConfigFile.shapes[rng.nextInt(GameConfigFile.shapes.length)];
     var color = GameConfigFile
         .blockColors[rng.nextInt(GameConfigFile.blockColors.length)];
 
