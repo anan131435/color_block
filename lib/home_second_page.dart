@@ -88,6 +88,7 @@ class _HomeSecondPageState extends State<HomeSecondPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
+                                settings: const RouteSettings(name: 'GamePage_Puzzle'),
                                 builder: (context) =>
                                     const GamePage(isJourneyMode: true),
                               ),
@@ -106,6 +107,7 @@ class _HomeSecondPageState extends State<HomeSecondPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
+                                settings: const RouteSettings(name: 'GamePage_Classic'),
                                 builder: (context) => const GamePage(),
                               ),
                             ).then((_) => _loadStats());
