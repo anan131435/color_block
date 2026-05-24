@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 class RelaxingText extends PositionComponent {
   late final TextPainter shadowPainter;
   late final TextPainter mainPainter;
-  final String text = "ADDICTIVE";
+  final String text = "Now Play";
   final Color textColor = const Color(0xFFFFEB3B); // Golden yellow like "COLOR"
 
   RelaxingText({required Vector2 position})
