@@ -115,19 +115,19 @@ class ColorBlockGame extends FlameGame {
     spawnBlocks();
 
     // Add "RELAXING" text component at the bottom margin of the screen
-    double relaxingY = gameHeight - 60;
+    // double relaxingY = gameHeight - 60;
     // Safety check: ensure it doesn't overlap the candidate blocks pool if the screen is very short.
     // The candidate blocks are spawned centered at poolY + 50, with a max visual size bounded to cellSize * 2.2.
     // So the pool bottom bounds are roughly poolY + 50 + gridBoard.cellWidth * 1.1.
-    double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
-    double poolBottom = poolY + 50 + gridBoard.cellWidth * 1.1;
-    if (relaxingY < poolBottom + 30) {
-      relaxingY = poolBottom + 30; // Safety padding fallback
-    }
+    // double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
+    // double poolBottom = poolY + 50 + gridBoard.cellWidth * 1.1;
+    // if (relaxingY < poolBottom + 30) {
+    //   relaxingY = poolBottom + 30; // Safety padding fallback
+    // }
 
-    add(RelaxingText(
-      position: Vector2(gameWidth / 2, relaxingY),
-    ));
+    // add(RelaxingText(
+    //   position: Vector2(gameWidth / 2, relaxingY),
+    // ));
   }
 
   void preFillGrid() {
