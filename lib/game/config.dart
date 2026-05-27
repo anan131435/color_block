@@ -38,5 +38,64 @@ class GameConfigFile {
     [Vector2(1, 0), Vector2(1, 1), Vector2(1, 2), Vector2(0, 2)],
     // T shape
     [Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(1, 1)],
+
+    // === 1x4 直线 ===
+    // 1x4 Vertical
+    [Vector2(0, 0), Vector2(0, 1), Vector2(0, 2), Vector2(0, 3)],
+    // 1x4 Horizontal
+    [Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(3, 0)],
+
+    // === 1x5 直线 ===
+    // 1x5 Vertical
+    [Vector2(0, 0), Vector2(0, 1), Vector2(0, 2), Vector2(0, 3), Vector2(0, 4)],
+    // 1x5 Horizontal
+    [Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(3, 0), Vector2(4, 0)],
+
+    // === 3x3 正方形 ===
+    [
+      Vector2(0, 0), Vector2(1, 0), Vector2(2, 0),
+      Vector2(0, 1), Vector2(1, 1), Vector2(2, 1),
+      Vector2(0, 2), Vector2(1, 2), Vector2(2, 2)
+    ],
+
+    // === Z & S 形方块 ===
+    // Z Shape (Horizontal)
+    [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(2, 1)],
+    // Z Shape (Vertical)
+    [Vector2(1, 0), Vector2(1, 1), Vector2(0, 1), Vector2(0, 2)],
+    // S Shape (Horizontal)
+    [Vector2(1, 0), Vector2(2, 0), Vector2(0, 1), Vector2(1, 1)],
+    // S Shape (Vertical)
+    [Vector2(0, 0), Vector2(0, 1), Vector2(1, 1), Vector2(1, 2)],
+
+    // === 大 L 型拐角 (3x3 范围, 5 方格) ===
+    // Big L (Normal)
+    [Vector2(0, 0), Vector2(0, 1), Vector2(0, 2), Vector2(1, 2), Vector2(2, 2)],
+    // Big L (Rotated 90)
+    [Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(0, 1), Vector2(0, 2)],
+    // Big L (Rotated 180)
+    [Vector2(0, 0), Vector2(1, 0), Vector2(2, 0), Vector2(2, 1), Vector2(2, 2)],
+    // Big L (Rotated 270)
+    [Vector2(2, 0), Vector2(2, 1), Vector2(2, 2), Vector2(1, 2), Vector2(0, 2)],
+
+    // === 小 L 型拐角 (2x2 范围, 3 方格) ===
+    // Small L (Normal)
+    [Vector2(0, 0), Vector2(0, 1), Vector2(1, 1)],
+    // Small L (Rotated 90)
+    [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)],
+    // Small L (Rotated 180)
+    [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1)],
+    // Small L (Rotated 270)
+    [Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)],
+
+    // === 对角斜线 ===
+    // 2-block Diagonal (Forward)
+    [Vector2(0, 0), Vector2(1, 1)],
+    // 2-block Diagonal (Backward)
+    [Vector2(1, 0), Vector2(0, 1)],
+    // 3-block Diagonal (Forward)
+    [Vector2(0, 0), Vector2(1, 1), Vector2(2, 2)],
+    // 3-block Diagonal (Backward)
+    [Vector2(2, 0), Vector2(1, 1), Vector2(0, 2)],
   ];
 }

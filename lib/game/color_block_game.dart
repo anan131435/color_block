@@ -9,7 +9,6 @@ import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
 import 'components/feedback_text_effect.dart';
-import 'components/relaxing_text.dart';
 
 class ColorBlockGame extends FlameGame {
   final bool isJourneyMode;
