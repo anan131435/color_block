@@ -23,6 +23,7 @@ class ColorBlockGame extends FlameGame {
   // High Score
   int highScore = 0;
   int comboCount = 0;
+  int placementCount = 0;
 
   late TextComponent scoreText;
   late TextComponent highScoreText;
@@ -168,8 +169,81 @@ class ColorBlockGame extends FlameGame {
 
     final rng = Random();
 
+    // Calculate recommended shape indices if placementCount < 20
+    List<int> recommendedIndices = [];
+    if (placementCount < 20) {
+      // Check each row
+      for (int r = 0; r < GameConfigFile.gridRows; r++) {
+        int filledInRow = 0;
+        for (int c = 0; c < GameConfigFile.gridCols; c++) {
+          if (gridBoard.gridState[r][c] != null) {
+            filledInRow++;
+          }
+        }
+        if (filledInRow >= 5 && filledInRow <= 7) {
+          // Find contiguous empty segments in row
+          int contiguousEmpty = 0;
+          for (int c = 0; c < GameConfigFile.gridCols; c++) {
+            if (gridBoard.gridState[r][c] == null) {
+              contiguousEmpty++;
+            } else {
+              if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
+                if (contiguousEmpty == 1) recommendedIndices.add(0); // 1x1
+                if (contiguousEmpty == 2) recommendedIndices.add(2); // 1x2 Horizontal
+                if (contiguousEmpty == 3) recommendedIndices.add(4); // 1x3 Horizontal
+              }
+              contiguousEmpty = 0;
+            }
+          }
+          if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
+            if (contiguousEmpty == 1) recommendedIndices.add(0);
+            if (contiguousEmpty == 2) recommendedIndices.add(2);
+            if (contiguousEmpty == 3) recommendedIndices.add(4);
+          }
+        }
+      }
+
+      // Check each col
+      for (int c = 0; c < GameConfigFile.gridCols; c++) {
+        int filledInCol = 0;
+        for (int r = 0; r < GameConfigFile.gridRows; r++) {
+          if (gridBoard.gridState[r][c] != null) {
+            filledInCol++;
+          }
+        }
+        if (filledInCol >= 5 && filledInCol <= 7) {
+          // Find contiguous empty segments in col
+          int contiguousEmpty = 0;
+          for (int r = 0; r < GameConfigFile.gridRows; r++) {
+            if (gridBoard.gridState[r][c] == null) {
+              contiguousEmpty++;
+            } else {
+              if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
+                if (contiguousEmpty == 1) recommendedIndices.add(0); // 1x1
+                if (contiguousEmpty == 2) recommendedIndices.add(1); // 1x2 Vertical
+                if (contiguousEmpty == 3) recommendedIndices.add(3); // 1x3 Vertical
+              }
+              contiguousEmpty = 0;
+            }
+          }
+          if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
+            if (contiguousEmpty == 1) recommendedIndices.add(0);
+            if (contiguousEmpty == 2) recommendedIndices.add(1);
+            if (contiguousEmpty == 3) recommendedIndices.add(3);
+          }
+        }
+      }
+    }
+
     // Weighted selector
     List<Vector2> selectRandomShape() {
+      // If we have recommended shapes and are in the first 20 placements,
+      // choose from them with 70% probability to help players clear lines.
+      if (placementCount < 20 && recommendedIndices.isNotEmpty && rng.nextDouble() < 0.70) {
+        int shapeIndex = recommendedIndices[rng.nextInt(recommendedIndices.length)];
+        return GameConfigFile.shapes[shapeIndex];
+      }
+
       double easyProb;
       double medProb;
       
@@ -307,6 +381,7 @@ class ColorBlockGame extends FlameGame {
 
       // Remove from active list
       activeBlocks.remove(block);
+      placementCount++;
 
       if (activeBlocks.isEmpty) {
         spawnBlocks();
@@ -437,6 +512,7 @@ class ColorBlockGame extends FlameGame {
     score = 0;
     scoreText.text = '0';
     comboCount = 0; // Reset turn-by-turn combo
+    placementCount = 0; // Reset placement counter
     // Refresh high score just in case
     PrefsManager.getHighScore().then((val) {
       highScore = val;
