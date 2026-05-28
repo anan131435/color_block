@@ -151,37 +151,116 @@ class ColorBlockGame extends FlameGame {
     double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
     double slotWidth = gameWidth / 3;
 
-    for (int i = 0; i < 3; i++) {
-      _spawnSingleBlock(i, slotWidth, poolY);
+    // 1. Calculate board fullness
+    int filled = 0;
+    for (int r = 0; r < GameConfigFile.gridRows; r++) {
+      for (int c = 0; c < GameConfigFile.gridCols; c++) {
+        if (gridBoard.gridState[r][c] != null) {
+          filled++;
+        }
+      }
     }
-  }
 
-  void _spawnSingleBlock(int index, double slotWidth, double poolY) {
-    if (index < 0 || index >= 3) return;
+    // Classify shapes by difficulty
+    final List<int> easyIndices = [0, 1, 2, 22, 23, 24, 25, 26, 27];
+    final List<int> mediumIndices = [3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 28, 29];
+    final List<int> hardIndices = [11, 12, 13, 18, 19, 20, 21];
 
-    var rng = Random();
-    var shape =
-        GameConfigFile.shapes[rng.nextInt(GameConfigFile.shapes.length)];
-    var color = GameConfigFile
-        .blockColors[rng.nextInt(GameConfigFile.blockColors.length)];
+    final rng = Random();
 
-    // Calculate spawn pos
-    Vector2 spawnPos = Vector2(slotWidth * index + slotWidth / 2, poolY + 50);
+    // Weighted selector
+    List<Vector2> selectRandomShape() {
+      double easyProb;
+      double medProb;
+      
+      if (filled > 38) { // >60% filled: Rescue Mode (only easy blocks)
+        easyProb = 1.0;
+        medProb = 0.0;
+      } else if (filled > 25) { // 40%-60% filled: Normal Mode
+        easyProb = 0.65;
+        medProb = 0.30;
+      } else { // <40% filled: Challenging Mode
+        easyProb = 0.40;
+        medProb = 0.45;
+      }
 
-    var block = DraggableBlock(
-      shapeOffsets: shape,
-      color: color,
-      cellSize: gridBoard.cellWidth, // Use active grid cell size
-      originalPosition: spawnPos,
-      onPlace: () {
-        // Find which block this was and null logic if needed
-        // Assuming block removes itself from parent
-        checkEndGame(); // or check refill
-      },
-    );
-    block.position = spawnPos;
-    add(block);
-    activeBlocks.add(block);
+      double rand = rng.nextDouble();
+      int shapeIndex;
+      if (rand < easyProb) {
+        shapeIndex = easyIndices[rng.nextInt(easyIndices.length)];
+      } else if (rand < easyProb + medProb) {
+        shapeIndex = mediumIndices[rng.nextInt(mediumIndices.length)];
+      } else {
+        shapeIndex = hardIndices[rng.nextInt(hardIndices.length)];
+      }
+      return GameConfigFile.shapes[shapeIndex];
+    }
+
+    // Helper to check if a shape can be placed anywhere
+    bool canShapeBePlaced(List<Vector2> shape) {
+      for (int r = 0; r < GameConfigFile.gridRows; r++) {
+        for (int c = 0; c < GameConfigFile.gridCols; c++) {
+          if (gridBoard.canPlace(shape, Vector2(c.toDouble(), r.toDouble()))) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // 2. Select 3 shapes and guarantee at least one is placeable
+    List<List<Vector2>> selectedShapes = [];
+    bool hasPlaceable = false;
+    int attempts = 0;
+
+    while (!hasPlaceable && attempts < 20) {
+      selectedShapes.clear();
+      hasPlaceable = false;
+      for (int i = 0; i < 3; i++) {
+        var shp = selectRandomShape();
+        selectedShapes.add(shp);
+        if (canShapeBePlaced(shp)) {
+          hasPlaceable = true;
+        }
+      }
+      attempts++;
+    }
+
+    // If still not placeable after 20 attempts, force the third shape to be 1x1
+    if (!hasPlaceable) {
+      bool hasEmptyCell = false;
+      for (int r = 0; r < GameConfigFile.gridRows; r++) {
+        for (int c = 0; c < GameConfigFile.gridCols; c++) {
+          if (gridBoard.gridState[r][c] == null) {
+            hasEmptyCell = true;
+            break;
+          }
+        }
+        if (hasEmptyCell) break;
+      }
+      if (hasEmptyCell && selectedShapes.isNotEmpty) {
+        selectedShapes[2] = GameConfigFile.shapes[0]; // Force 1x1
+      }
+    }
+
+    // 3. Spawn the selected shapes
+    for (int i = 0; i < 3; i++) {
+      var color = GameConfigFile.blockColors[rng.nextInt(GameConfigFile.blockColors.length)];
+      Vector2 spawnPos = Vector2(slotWidth * i + slotWidth / 2, poolY + 50);
+
+      var block = DraggableBlock(
+        shapeOffsets: selectedShapes[i],
+        color: color,
+        cellSize: gridBoard.cellWidth,
+        originalPosition: spawnPos,
+        onPlace: () {
+          checkEndGame();
+        },
+      );
+      block.position = spawnPos;
+      add(block);
+      activeBlocks.add(block);
+    }
   }
 
   // Called by block when dropped
@@ -318,7 +397,7 @@ class ColorBlockGame extends FlameGame {
 
       // Play combo sound if consecutive turns are cleared
       if (comboCount >= 2) {
-        FlameAudio.play('comob.mp3');
+        // FlameAudio.play('comob.mp3');
         add(FeedbackTextEffect(
           text: 'COMBO x$comboCount!',
           textColor: const Color(0xFF00E5FF), // Cyan for combos
