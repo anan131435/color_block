@@ -169,9 +169,9 @@ class ColorBlockGame extends FlameGame {
 
     final rng = Random();
 
-    // Calculate recommended shape indices if placementCount < 20
+    // Calculate recommended shape indices if placementCount < 60
     List<int> recommendedIndices = [];
-    if (placementCount < 20) {
+    if (placementCount < 60) {
       // Check each row
       for (int r = 0; r < GameConfigFile.gridRows; r++) {
         int filledInRow = 0;
@@ -237,9 +237,9 @@ class ColorBlockGame extends FlameGame {
 
     // Weighted selector
     List<Vector2> selectRandomShape() {
-      // If we have recommended shapes and are in the first 20 placements,
+      // If we have recommended shapes and are in the first 60 placements,
       // choose from them with 70% probability to help players clear lines.
-      if (placementCount < 20 && recommendedIndices.isNotEmpty && rng.nextDouble() < 0.70) {
+      if (placementCount < 60 && recommendedIndices.isNotEmpty && rng.nextDouble() < 0.70) {
         int shapeIndex = recommendedIndices[rng.nextInt(recommendedIndices.length)];
         return GameConfigFile.shapes[shapeIndex];
       }
