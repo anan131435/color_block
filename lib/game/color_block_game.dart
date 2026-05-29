@@ -172,7 +172,10 @@ class ColorBlockGame extends FlameGame {
     // Calculate recommended shape indices if placementCount < 60
     List<int> recommendedIndices = [];
     if (placementCount < 60) {
-      // Check each row
+      // 1. Gather all empty cell positions in rows/columns close to clearing (5 to 7 filled)
+      List<Vector2> targetEmptyCells = [];
+      
+      // Scan rows
       for (int r = 0; r < GameConfigFile.gridRows; r++) {
         int filledInRow = 0;
         for (int c = 0; c < GameConfigFile.gridCols; c++) {
@@ -181,29 +184,15 @@ class ColorBlockGame extends FlameGame {
           }
         }
         if (filledInRow >= 5 && filledInRow <= 7) {
-          // Find contiguous empty segments in row
-          int contiguousEmpty = 0;
           for (int c = 0; c < GameConfigFile.gridCols; c++) {
             if (gridBoard.gridState[r][c] == null) {
-              contiguousEmpty++;
-            } else {
-              if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
-                if (contiguousEmpty == 1) recommendedIndices.add(0); // 1x1
-                if (contiguousEmpty == 2) recommendedIndices.add(2); // 1x2 Horizontal
-                if (contiguousEmpty == 3) recommendedIndices.add(4); // 1x3 Horizontal
-              }
-              contiguousEmpty = 0;
+              targetEmptyCells.add(Vector2(c.toDouble(), r.toDouble()));
             }
-          }
-          if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
-            if (contiguousEmpty == 1) recommendedIndices.add(0);
-            if (contiguousEmpty == 2) recommendedIndices.add(2);
-            if (contiguousEmpty == 3) recommendedIndices.add(4);
           }
         }
       }
 
-      // Check each col
+      // Scan columns
       for (int c = 0; c < GameConfigFile.gridCols; c++) {
         int filledInCol = 0;
         for (int r = 0; r < GameConfigFile.gridRows; r++) {
@@ -212,26 +201,58 @@ class ColorBlockGame extends FlameGame {
           }
         }
         if (filledInCol >= 5 && filledInCol <= 7) {
-          // Find contiguous empty segments in col
-          int contiguousEmpty = 0;
           for (int r = 0; r < GameConfigFile.gridRows; r++) {
             if (gridBoard.gridState[r][c] == null) {
-              contiguousEmpty++;
-            } else {
-              if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
-                if (contiguousEmpty == 1) recommendedIndices.add(0); // 1x1
-                if (contiguousEmpty == 2) recommendedIndices.add(1); // 1x2 Vertical
-                if (contiguousEmpty == 3) recommendedIndices.add(3); // 1x3 Vertical
+              Vector2 cell = Vector2(c.toDouble(), r.toDouble());
+              if (!targetEmptyCells.any((v) => v.x == cell.x && v.y == cell.y)) {
+                targetEmptyCells.add(cell);
               }
-              contiguousEmpty = 0;
             }
           }
-          if (contiguousEmpty > 0 && contiguousEmpty <= 3) {
-            if (contiguousEmpty == 1) recommendedIndices.add(0);
-            if (contiguousEmpty == 2) recommendedIndices.add(1);
-            if (contiguousEmpty == 3) recommendedIndices.add(3);
+        }
+      }
+
+      // 2. Scan which satisfying placeable shapes can cover at least one target empty cell
+      // We search over popular, satisfying medium/large shapes (excluding 1x1 to keep it interesting)
+      final List<int> candidateSearchIndices = [
+        1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 22, 23, 24, 25
+      ];
+
+      if (targetEmptyCells.isNotEmpty) {
+        for (int shapeIdx in candidateSearchIndices) {
+          var shape = GameConfigFile.shapes[shapeIdx];
+          bool isUseful = false;
+          
+          // Test all positions on the grid
+          for (int r = 0; r < GameConfigFile.gridRows; r++) {
+            for (int c = 0; c < GameConfigFile.gridCols; c++) {
+              Vector2 pos = Vector2(c.toDouble(), r.toDouble());
+              if (gridBoard.canPlace(shape, pos)) {
+                // Check if this placement covers any of the targeted empty cells
+                for (var offset in shape) {
+                  double targetX = pos.x + offset.x;
+                  double targetY = pos.y + offset.y;
+                  if (targetEmptyCells.any((v) => v.x == targetX && v.y == targetY)) {
+                    isUseful = true;
+                    break;
+                  }
+                }
+              }
+              if (isUseful) break;
+            }
+            if (isUseful) break;
+          }
+          
+          if (isUseful) {
+            recommendedIndices.add(shapeIdx);
           }
         }
+      }
+
+      // If recommendedIndices is empty (e.g. at the start of the game),
+      // pre-populate with nice, easy-to-use shapes (no 1x1, to avoid triviality)
+      if (recommendedIndices.isEmpty) {
+        recommendedIndices.addAll([1, 2, 5, 6, 7, 8, 22, 23, 24, 25]);
       }
     }
 
