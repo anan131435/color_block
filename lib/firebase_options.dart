@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAKo-IuV4VRoAB9DQDPqSAyJvdkPXEhWe8',
-    appId: '1:736430912123:android:947591613ce75bd08028de',
+    appId: '1:736430912123:android:5f60ed179392c5b78028de',
     messagingSenderId: '736430912123',
     projectId: 'colorblock-2f41c',
     storageBucket: 'colorblock-2f41c.firebasestorage.app',
@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'colorblock-2f41c.firebasestorage.app',
     measurementId: 'G-SNHNFZF1CN',
   );
+
 }

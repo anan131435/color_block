@@ -1,4 +1,4 @@
-package com.example.color_block
+package com.colorblockbaster.org
 
 import io.flutter.embedding.android.FlutterActivity
 
