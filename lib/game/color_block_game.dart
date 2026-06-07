@@ -66,7 +66,7 @@ class ColorBlockGame extends FlameGame {
     highScore = await PrefsManager.getHighScore();
     highScoreText = TextComponent(
       text: '🏆 $highScore',
-      position: Vector2(20, 50),
+      position: Vector2(20, 40),
       anchor: Anchor.topLeft,
       textRenderer: TextPaint(
         style: const TextStyle(
@@ -82,7 +82,7 @@ class ColorBlockGame extends FlameGame {
     // Add Score (Current Game)
     scoreText = TextComponent(
       text: '0',
-      position: Vector2(gameWidth / 2, 100),
+      position: Vector2(gameWidth / 2, 90),
       anchor: Anchor.topCenter,
       textRenderer: TextPaint(
         style: const TextStyle(
@@ -94,15 +94,23 @@ class ColorBlockGame extends FlameGame {
     );
     add(scoreText);
 
-    // Calculate Grid Size
-    // Max width 90% of screen, but need vertical space too.
-    double gridScreenSize = min(gameWidth * 0.9, gameHeight * 0.6);
+    // Calculate Grid Size and Position dynamically to prevent overlapping with scores/bottom blocks.
+    double topPadding = 145.0; // Space for high score (y=40) and current score (y=90) plus padding
+    double bottomPadding = 165.0; // Space for candidate blocks pool at bottom
+    double availableHeight = max(200.0, gameHeight - topPadding - bottomPadding);
+    
+    // Scale board size to fit available space comfortably
+    double gridScreenSize = min(gameWidth * 0.9, availableHeight);
+    
+    // Center the board in the available vertical space
+    double boardCenterY = topPadding + (availableHeight / 2);
+    
     gridBoard = GridBoard(
       size: Vector2.all(gridScreenSize),
       position: Vector2(
         gameWidth / 2,
-        gameHeight / 2 - 50,
-      ), // Center slightly shifted up
+        boardCenterY,
+      ),
     )..anchor = Anchor.center;
 
     add(gridBoard);
@@ -488,8 +496,8 @@ class ColorBlockGame extends FlameGame {
 
       if (linesCleared == 0) return;
 
-      // Calculate screen center above the board for visual pop-up
-      final Vector2 textPos = Vector2(gameWidth / 2, gameHeight / 2 - 50);
+      // Calculate screen center at the board for visual pop-up
+      final Vector2 textPos = gridBoard.position;
 
       // Play combo sound if consecutive turns are cleared
       if (comboCount >= 2) {
