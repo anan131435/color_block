@@ -9,11 +9,15 @@ import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
 import 'components/feedback_text_effect.dart';
+import 'adaptive_shape_generator.dart';
 
 class ColorBlockGame extends FlameGame {
   final bool isJourneyMode;
   late GridBoard gridBoard;
   final List<DraggableBlock> activeBlocks = [];
+
+  // Adaptive shape generator (used for the first kAdaptiveRounds placements)
+  final AdaptiveShapeGenerator _shapeGenerator = AdaptiveShapeGenerator();
 
   ColorBlockGame({this.isJourneyMode = false});
 
@@ -154,199 +158,107 @@ class ColorBlockGame extends FlameGame {
 
   void spawnBlocks() {
     // Clear list
-    activeBlocks.clear(); // Components remove themselves on place
+    activeBlocks.clear();
 
-    // We need 3 slots at the bottom
+    // Slot positions at the bottom
     double poolY = gridBoard.position.y + gridBoard.height / 2 + 30;
     double slotWidth = gameWidth / 3;
-
-    // 1. Calculate board fullness
-    int filled = 0;
-    for (int r = 0; r < GameConfigFile.gridRows; r++) {
-      for (int c = 0; c < GameConfigFile.gridCols; c++) {
-        if (gridBoard.gridState[r][c] != null) {
-          filled++;
-        }
-      }
-    }
-
-    // Classify shapes by difficulty
-    final List<int> easyIndices = [0, 1, 2, 22, 23, 24, 25, 26, 27];
-    final List<int> mediumIndices = [3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 28, 29];
-    final List<int> hardIndices = [11, 12, 13, 18, 19, 20, 21];
-
     final rng = Random();
 
-    // Calculate recommended shape indices if placementCount < 60
-    List<int> recommendedIndices = [];
-    if (placementCount < 60) {
-      // 1. Gather all empty cell positions in rows/columns close to clearing (5 to 7 filled)
-      List<Vector2> targetEmptyCells = [];
-      
-      // Scan rows
+    // -----------------------------------------------------------------------
+    // Phase 1 (placements 0-19): ADAPTIVE mode
+    //   The AdaptiveShapeGenerator analyses the current board and synthesises
+    //   shapes that fit open regions, complete near-full lines, and are always
+    //   immediately placeable.  Shapes are not limited to the fixed enum list.
+    //
+    // Phase 2 (placements 20+): CLASSIC weighted-random mode
+    //   Reverts to the original difficulty-scaled random selection.
+    // -----------------------------------------------------------------------
+
+    List<List<Vector2>> selectedShapes;
+
+    if (placementCount < AdaptiveShapeGenerator.kAdaptiveRounds) {
+      // --- Adaptive phase ---
+      selectedShapes = _shapeGenerator.generate(gridBoard.gridState, placementCount);
+
+      // Safety: if generator returned fewer than 3 shapes, pad with easy ones
+      while (selectedShapes.length < 3) {
+        selectedShapes.add([Vector2(0, 0), Vector2(1, 0)]);
+      }
+    } else {
+      // --- Classic weighted-random phase ---
+      // Calculate board fullness
+      int filled = 0;
       for (int r = 0; r < GameConfigFile.gridRows; r++) {
-        int filledInRow = 0;
         for (int c = 0; c < GameConfigFile.gridCols; c++) {
-          if (gridBoard.gridState[r][c] != null) {
-            filledInRow++;
-          }
-        }
-        if (filledInRow >= 5 && filledInRow <= 7) {
-          for (int c = 0; c < GameConfigFile.gridCols; c++) {
-            if (gridBoard.gridState[r][c] == null) {
-              targetEmptyCells.add(Vector2(c.toDouble(), r.toDouble()));
-            }
-          }
+          if (gridBoard.gridState[r][c] != null) filled++;
         }
       }
 
-      // Scan columns
-      for (int c = 0; c < GameConfigFile.gridCols; c++) {
-        int filledInCol = 0;
-        for (int r = 0; r < GameConfigFile.gridRows; r++) {
-          if (gridBoard.gridState[r][c] != null) {
-            filledInCol++;
-          }
+      // Classify shapes by difficulty
+      final List<int> easyIndices   = [0, 1, 2, 22, 23, 24, 25, 26, 27];
+      final List<int> mediumIndices = [3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 28, 29];
+      final List<int> hardIndices   = [11, 12, 13, 18, 19, 20, 21];
+
+      List<Vector2> selectRandomShape() {
+        double easyProb;
+        double medProb;
+        if (filled > 38) {
+          easyProb = 1.0; medProb = 0.0;
+        } else if (filled > 25) {
+          easyProb = 0.65; medProb = 0.30;
+        } else {
+          easyProb = 0.40; medProb = 0.45;
         }
-        if (filledInCol >= 5 && filledInCol <= 7) {
-          for (int r = 0; r < GameConfigFile.gridRows; r++) {
-            if (gridBoard.gridState[r][c] == null) {
-              Vector2 cell = Vector2(c.toDouble(), r.toDouble());
-              if (!targetEmptyCells.any((v) => v.x == cell.x && v.y == cell.y)) {
-                targetEmptyCells.add(cell);
-              }
-            }
-          }
+        double rand = rng.nextDouble();
+        int shapeIndex;
+        if (rand < easyProb) {
+          shapeIndex = easyIndices[rng.nextInt(easyIndices.length)];
+        } else if (rand < easyProb + medProb) {
+          shapeIndex = mediumIndices[rng.nextInt(mediumIndices.length)];
+        } else {
+          shapeIndex = hardIndices[rng.nextInt(hardIndices.length)];
         }
-      }
-
-      // 2. Scan which satisfying placeable shapes can cover at least one target empty cell
-      // We search over popular, satisfying medium/large shapes (excluding 1x1 to keep it interesting)
-      final List<int> candidateSearchIndices = [
-        1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 22, 23, 24, 25
-      ];
-
-      if (targetEmptyCells.isNotEmpty) {
-        for (int shapeIdx in candidateSearchIndices) {
-          var shape = GameConfigFile.shapes[shapeIdx];
-          bool isUseful = false;
-          
-          // Test all positions on the grid
-          for (int r = 0; r < GameConfigFile.gridRows; r++) {
-            for (int c = 0; c < GameConfigFile.gridCols; c++) {
-              Vector2 pos = Vector2(c.toDouble(), r.toDouble());
-              if (gridBoard.canPlace(shape, pos)) {
-                // Check if this placement covers any of the targeted empty cells
-                for (var offset in shape) {
-                  double targetX = pos.x + offset.x;
-                  double targetY = pos.y + offset.y;
-                  if (targetEmptyCells.any((v) => v.x == targetX && v.y == targetY)) {
-                    isUseful = true;
-                    break;
-                  }
-                }
-              }
-              if (isUseful) break;
-            }
-            if (isUseful) break;
-          }
-          
-          if (isUseful) {
-            recommendedIndices.add(shapeIdx);
-          }
-        }
-      }
-
-      // If recommendedIndices is empty (e.g. at the start of the game),
-      // pre-populate with nice, easy-to-use shapes (no 1x1, to avoid triviality)
-      if (recommendedIndices.isEmpty) {
-        recommendedIndices.addAll([1, 2, 5, 6, 7, 8, 22, 23, 24, 25]);
-      }
-    }
-
-    // Weighted selector
-    List<Vector2> selectRandomShape() {
-      // If we have recommended shapes and are in the first 60 placements,
-      // choose from them with 70% probability to help players clear lines.
-      if (placementCount < 60 && recommendedIndices.isNotEmpty && rng.nextDouble() < 0.70) {
-        int shapeIndex = recommendedIndices[rng.nextInt(recommendedIndices.length)];
         return GameConfigFile.shapes[shapeIndex];
       }
 
-      double easyProb;
-      double medProb;
-      
-      if (filled > 38) { // >60% filled: Rescue Mode (only easy blocks)
-        easyProb = 1.0;
-        medProb = 0.0;
-      } else if (filled > 25) { // 40%-60% filled: Normal Mode
-        easyProb = 0.65;
-        medProb = 0.30;
-      } else { // <40% filled: Challenging Mode
-        easyProb = 0.40;
-        medProb = 0.45;
-      }
-
-      double rand = rng.nextDouble();
-      int shapeIndex;
-      if (rand < easyProb) {
-        shapeIndex = easyIndices[rng.nextInt(easyIndices.length)];
-      } else if (rand < easyProb + medProb) {
-        shapeIndex = mediumIndices[rng.nextInt(mediumIndices.length)];
-      } else {
-        shapeIndex = hardIndices[rng.nextInt(hardIndices.length)];
-      }
-      return GameConfigFile.shapes[shapeIndex];
-    }
-
-    // Helper to check if a shape can be placed anywhere
-    bool canShapeBePlaced(List<Vector2> shape) {
-      for (int r = 0; r < GameConfigFile.gridRows; r++) {
-        for (int c = 0; c < GameConfigFile.gridCols; c++) {
-          if (gridBoard.canPlace(shape, Vector2(c.toDouble(), r.toDouble()))) {
-            return true;
+      bool canShapeBePlaced(List<Vector2> shape) {
+        for (int r = 0; r < GameConfigFile.gridRows; r++) {
+          for (int c = 0; c < GameConfigFile.gridCols; c++) {
+            if (gridBoard.canPlace(shape, Vector2(c.toDouble(), r.toDouble()))) return true;
           }
         }
+        return false;
       }
-      return false;
-    }
 
-    // 2. Select 3 shapes and guarantee at least one is placeable
-    List<List<Vector2>> selectedShapes = [];
-    bool hasPlaceable = false;
-    int attempts = 0;
-
-    while (!hasPlaceable && attempts < 20) {
-      selectedShapes.clear();
-      hasPlaceable = false;
-      for (int i = 0; i < 3; i++) {
-        var shp = selectRandomShape();
-        selectedShapes.add(shp);
-        if (canShapeBePlaced(shp)) {
-          hasPlaceable = true;
+      selectedShapes = [];
+      bool hasPlaceable = false;
+      int attempts = 0;
+      while (!hasPlaceable && attempts < 20) {
+        selectedShapes.clear();
+        hasPlaceable = false;
+        for (int i = 0; i < 3; i++) {
+          var shp = selectRandomShape();
+          selectedShapes.add(shp);
+          if (canShapeBePlaced(shp)) hasPlaceable = true;
         }
+        attempts++;
       }
-      attempts++;
-    }
 
-    // If still not placeable after 20 attempts, force the third shape to be 1x1
-    if (!hasPlaceable) {
-      bool hasEmptyCell = false;
-      for (int r = 0; r < GameConfigFile.gridRows; r++) {
-        for (int c = 0; c < GameConfigFile.gridCols; c++) {
-          if (gridBoard.gridState[r][c] == null) {
-            hasEmptyCell = true;
-            break;
+      if (!hasPlaceable) {
+        bool hasEmptyCell = false;
+        for (int r = 0; r < GameConfigFile.gridRows && !hasEmptyCell; r++) {
+          for (int c = 0; c < GameConfigFile.gridCols && !hasEmptyCell; c++) {
+            if (gridBoard.gridState[r][c] == null) hasEmptyCell = true;
           }
         }
-        if (hasEmptyCell) break;
-      }
-      if (hasEmptyCell && selectedShapes.isNotEmpty) {
-        selectedShapes[2] = GameConfigFile.shapes[0]; // Force 1x1
+        if (hasEmptyCell && selectedShapes.isNotEmpty) {
+          selectedShapes[2] = GameConfigFile.shapes[0]; // Force 1x1
+        }
       }
     }
 
-    // 3. Spawn the selected shapes
+    // Spawn the selected shapes into the pool slots
     for (int i = 0; i < 3; i++) {
       var color = GameConfigFile.blockColors[rng.nextInt(GameConfigFile.blockColors.length)];
       Vector2 spawnPos = Vector2(slotWidth * i + slotWidth / 2, poolY + 50);
