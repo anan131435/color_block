@@ -42,6 +42,11 @@ class ColorBlockGame extends FlameGame {
   late AudioPool clickPool;
   late AudioPool swipPool;
   late AudioPool clearPool;
+  late AudioPool goodPool;
+  late AudioPool greatPool;
+  late AudioPool excellentPool;
+  late AudioPool comboPool;
+  late AudioPool failPool;
 
   @override
   Future<void> onLoad() async {
@@ -54,14 +59,11 @@ class ColorBlockGame extends FlameGame {
     clickPool = await FlameAudio.createPool('click.mp3', maxPlayers: 4);
     swipPool = await FlameAudio.createPool('swip.wav', maxPlayers: 4);
     clearPool = await FlameAudio.createPool('clear_oneline.wav', maxPlayers: 4);
-    await FlameAudio.audioCache.loadAll([
-      'failed_game.wav',
-      'clear_oneline.wav',
-      'good.mp3',
-      'great.mp3',
-      'excellent.mp3',
-      'comob.mp3',
-    ]);
+    goodPool = await FlameAudio.createPool('good.mp3', maxPlayers: 2);
+    greatPool = await FlameAudio.createPool('great.mp3', maxPlayers: 2);
+    excellentPool = await FlameAudio.createPool('excellent.mp3', maxPlayers: 2);
+    comboPool = await FlameAudio.createPool('comob.mp3', maxPlayers: 2);
+    failPool = await FlameAudio.createPool('failed_game.wav', maxPlayers: 1);
 
     // Update Streak
     await PrefsManager.updateStreak();
@@ -390,14 +392,14 @@ class ColorBlockGame extends FlameGame {
 
     if (!canMove) {
       // Game Over
-      FlameAudio.play('failed_game.wav');
+      failPool.start();
       overlays.add('GameOver');
     }
   }
 
   Future<void> _playClearSequence(int points) async {
     try {
-      FlameAudio.play('clear_oneline.wav');
+      clearPool.start();
       
       // Calculate lines cleared based on score points
       int linesCleared = 0;
@@ -413,7 +415,7 @@ class ColorBlockGame extends FlameGame {
 
       // Play combo sound if consecutive turns are cleared
       if (comboCount >= 2) {
-        // FlameAudio.play('comob.mp3');
+        comboPool.start();
         add(FeedbackTextEffect(
           text: 'COMBO x$comboCount!',
           textColor: const Color(0xFF00E5FF), // Cyan for combos
@@ -422,21 +424,21 @@ class ColorBlockGame extends FlameGame {
       } else {
         // Play multiclear sounds for single placements
         if (linesCleared == 1) {
-          FlameAudio.play('good.mp3');
+          goodPool.start();
           add(FeedbackTextEffect(
             text: 'GOOD!',
             textColor: const Color(0xFF00E676), // Vibrant green
             position: textPos,
           ));
         } else if (linesCleared == 2) {
-          FlameAudio.play('great.mp3');
+          greatPool.start();
           add(FeedbackTextEffect(
             text: 'GREAT!',
             textColor: const Color(0xFFFFEB3B), // Yellow like "COLOR" on home page
             position: textPos,
           ));
         } else if (linesCleared >= 3) {
-          FlameAudio.play('excellent.mp3');
+          excellentPool.start();
           add(FeedbackTextEffect(
             text: 'EXCELLENT!!',
             textColor: const Color(0xFFFF5722), // Orange/Red like "BLOCK" on home page
