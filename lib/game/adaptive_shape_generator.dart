@@ -31,16 +31,39 @@ class AdaptiveShapeGenerator {
 
     final results = <List<Vector2>>[];
 
-    // 1. Analyse the board once
-    final analysis = _analyseBoard(gridState);
+    // 1. Find all line-clearing shapes (prioritizing 3-line clears, then 2-line clears)
+    final lineClearingCandidates = _findLineClearingCandidates(gridState);
+    
+    // Sort so that highest clearedCount is first
+    lineClearingCandidates.sort((a, b) => b.clearedCount.compareTo(a.clearedCount));
 
-    // 2. Build a candidate pool for this round
+    // Deduplicate line clearing candidates by shape to avoid identical shapes in the same turn
+    final seenShapes = <String>{};
+    final uniqueLineClearingCandidates = <_LineClearingCandidate>[];
+    for (final cand in lineClearingCandidates) {
+      final sorted = [...cand.shape]
+        ..sort((a, b) => a.y != b.y ? a.y.compareTo(b.y) : a.x.compareTo(b.x));
+      final key = sorted.map((v) => '${v.x.toInt()},${v.y.toInt()}').join('|');
+      if (seenShapes.add(key)) {
+        uniqueLineClearingCandidates.add(cand);
+      }
+    }
+
+    // 2. Analyse the board and build the standard candidate pool
+    final analysis = _analyseBoard(gridState);
     final candidates = _buildCandidatePool(gridState, analysis);
 
-    // 3. Pick 3 shapes, guaranteeing at least one is immediately placeable
+    // 3. Select the 3 shapes
+    int lineClearIdx = 0;
     for (int i = 0; i < 3; i++) {
-      final shape = _pickShape(candidates, gridState, guaranteePlace: i == 0);
-      results.add(shape);
+      if (lineClearIdx < uniqueLineClearingCandidates.length) {
+        final candidate = uniqueLineClearingCandidates[lineClearIdx++];
+        results.add(candidate.shape);
+      } else {
+        // Fall back to picking from the general candidate pool
+        final shape = _pickShape(candidates, gridState, guaranteePlace: i == 0 || results.isEmpty);
+        results.add(shape);
+      }
     }
 
     return results;
@@ -439,6 +462,234 @@ class AdaptiveShapeGenerator {
     }
     return result;
   }
+
+  // ---------------------------------------------------------------------------
+  // Multi-line Clearing Shape Synthesizer
+  // ---------------------------------------------------------------------------
+
+  List<_LineClearingCandidate> _findLineClearingCandidates(List<List<Color?>> g) {
+    final candidates = <_LineClearingCandidate>[];
+    
+    // Define empty cells for each row and column
+    final Map<int, List<_Cell>> lineEmptyCells = {};
+    for (int r = 0; r < 8; r++) {
+      lineEmptyCells[r] = [];
+      for (int c = 0; c < 8; c++) {
+        if (g[r][c] == null) {
+          lineEmptyCells[r]!.add(_Cell(r, c));
+        }
+      }
+    }
+    for (int c = 0; c < 8; c++) {
+      lineEmptyCells[c + 8] = [];
+      for (int r = 0; r < 8; r++) {
+        if (g[r][c] == null) {
+          lineEmptyCells[c + 8]!.add(_Cell(r, c));
+        }
+      }
+    }
+
+    // Helper to connect target cells and return normalized shape
+    List<Vector2>? connect(List<_Cell> targets) {
+      final targetVectors = targets.map((c) => Vector2(c.col.toDouble(), c.row.toDouble())).toList();
+      final connected = _connectCells(targetVectors, g, 5); // Max 5 cells
+      if (connected == null) return null;
+      return _normalizeShape(connected);
+    }
+
+    // Identify which lines are active (non-empty and not completely empty either, 
+    // but having at most 5 missing blocks so they can potentially be completed)
+    final List<int> activeLines = [];
+    for (int i = 0; i < 16; i++) {
+      final len = lineEmptyCells[i]!.length;
+      if (len > 0 && len <= 5) {
+        activeLines.add(i);
+      }
+    }
+
+    // 1. Check all combinations of 3 lines
+    for (int i = 0; i < activeLines.length; i++) {
+      final l1 = activeLines[i];
+      for (int j = i + 1; j < activeLines.length; j++) {
+        final l2 = activeLines[j];
+        for (int k = j + 1; k < activeLines.length; k++) {
+          final l3 = activeLines[k];
+          
+          final Set<String> combinedKeys = {};
+          final List<_Cell> combinedCells = [];
+          for (final l in [l1, l2, l3]) {
+            for (final cell in lineEmptyCells[l]!) {
+              final key = '${cell.row},${cell.col}';
+              if (combinedKeys.add(key)) {
+                combinedCells.add(cell);
+              }
+            }
+          }
+          
+          if (combinedCells.isNotEmpty && combinedCells.length <= 5) {
+            final shape = connect(combinedCells);
+            if (shape != null) {
+              candidates.add(_LineClearingCandidate(
+                shape: shape,
+                clearedCount: 3,
+                lines: [l1, l2, l3],
+              ));
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Check combinations of 2 lines
+    for (int i = 0; i < activeLines.length; i++) {
+      final l1 = activeLines[i];
+      for (int j = i + 1; j < activeLines.length; j++) {
+        final l2 = activeLines[j];
+        
+        final Set<String> combinedKeys = {};
+        final List<_Cell> combinedCells = [];
+        for (final l in [l1, l2]) {
+          for (final cell in lineEmptyCells[l]!) {
+            final key = '${cell.row},${cell.col}';
+            if (combinedKeys.add(key)) {
+              combinedCells.add(cell);
+            }
+          }
+        }
+        
+        if (combinedCells.isNotEmpty && combinedCells.length <= 5) {
+          final shape = connect(combinedCells);
+          if (shape != null) {
+            candidates.add(_LineClearingCandidate(
+              shape: shape,
+              clearedCount: 2,
+              lines: [l1, l2],
+            ));
+          }
+        }
+      }
+    }
+
+    // 3. Check 1-line clears
+    for (final l in activeLines) {
+      final cells = lineEmptyCells[l]!;
+      if (cells.isNotEmpty && cells.length <= 5) {
+        final shape = connect(cells);
+        if (shape != null) {
+          candidates.add(_LineClearingCandidate(
+            shape: shape,
+            clearedCount: 1,
+            lines: [l],
+          ));
+        }
+      }
+    }
+
+    return candidates;
+  }
+
+  List<Vector2>? _connectCells(List<Vector2> targets, List<List<Color?>> g, int maxCells) {
+    if (targets.isEmpty) return null;
+    if (targets.length > maxCells) return null;
+    
+    final targetCells = targets.map((v) => _Cell(v.y.toInt(), v.x.toInt())).toList();
+    
+    if (_isConnected(targetCells)) {
+      return targets;
+    }
+    
+    final Set<String> targetKeys = targetCells.map((c) => '${c.row},${c.col}').toSet();
+    List<_Cell>? bestConnection;
+    int steps = 0;
+    
+    void search(List<_Cell> current, Set<String> visited) {
+      steps++;
+      if (steps > 150) return; // Prevent performance bottlenecks
+      if (current.length > maxCells) return;
+      
+      // Check if current contains all targets
+      bool containsAll = true;
+      for (final t in targetKeys) {
+        if (!visited.contains(t)) {
+          containsAll = false;
+          break;
+        }
+      }
+      
+      if (containsAll) {
+        if (_isConnected(current)) {
+          if (bestConnection == null || current.length < bestConnection!.length) {
+            bestConnection = List.from(current);
+          }
+        }
+        return;
+      }
+      
+      if (current.length == maxCells) return;
+      
+      // Grow current: find all empty neighbors of current cells
+      final Set<String> candidates = {};
+      for (final cell in current) {
+        final neighbors = [
+          _Cell(cell.row - 1, cell.col),
+          _Cell(cell.row + 1, cell.col),
+          _Cell(cell.row, cell.col - 1),
+          _Cell(cell.row, cell.col + 1),
+        ];
+        for (final n in neighbors) {
+          if (n.row >= 0 && n.row < 8 && n.col >= 0 && n.col < 8 && g[n.row][n.col] == null) {
+            final key = '${n.row},${n.col}';
+            if (!visited.contains(key)) {
+              candidates.add(key);
+            }
+          }
+        }
+      }
+      
+      for (final candKey in candidates) {
+        final parts = candKey.split(',');
+        final r = int.parse(parts[0]);
+        final c = int.parse(parts[1]);
+        final newCell = _Cell(r, c);
+        
+        current.add(newCell);
+        visited.add(candKey);
+        
+        search(current, visited);
+        
+        current.removeLast();
+        visited.remove(candKey);
+      }
+    }
+    
+    final startCell = targetCells.first;
+    search([startCell], {'${startCell.row},${startCell.col}'});
+    
+    if (bestConnection != null) {
+      return bestConnection!.map((c) => Vector2(c.col.toDouble(), c.row.toDouble())).toList();
+    }
+    
+    return null;
+  }
+
+  bool _isConnected(List<_Cell> cells) {
+    if (cells.isEmpty) return true;
+    final Set<String> cellSet = cells.map((c) => '${c.row},${c.col}').toSet();
+    final visited = <String>{};
+    
+    void dfs(_Cell c) {
+      final key = '${c.row},${c.col}';
+      if (!cellSet.contains(key) || visited.contains(key)) return;
+      visited.add(key);
+      dfs(_Cell(c.row - 1, c.col));
+      dfs(_Cell(c.row + 1, c.col));
+      dfs(_Cell(c.row, c.col - 1));
+      dfs(_Cell(c.row, c.col + 1));
+    }
+    
+    dfs(cells.first);
+    return visited.length == cells.length;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -470,5 +721,17 @@ class _BoardAnalysis {
     required this.nearCompleteRows,
     required this.nearCompleteCols,
     required this.totalFilled,
+  });
+}
+
+class _LineClearingCandidate {
+  final List<Vector2> shape;
+  final int clearedCount;
+  final List<int> lines;
+
+  _LineClearingCandidate({
+    required this.shape,
+    required this.clearedCount,
+    required this.lines,
   });
 }

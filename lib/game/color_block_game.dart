@@ -9,6 +9,7 @@ import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
 import 'components/draggable_block.dart';
 import 'components/feedback_text_effect.dart';
+import 'components/heart_score.dart';
 import 'adaptive_shape_generator.dart';
 
 class ColorBlockGame extends FlameGame {
@@ -22,10 +23,11 @@ class ColorBlockGame extends FlameGame {
   ColorBlockGame({this.isJourneyMode = false});
 
   // Score
-  // Score
   int score = 0;
   // High Score
   int highScore = 0;
+  int _startHighScore = 0;
+  bool isNewRecord = false;
   int comboCount = 0;
   int placementCount = 0;
 
@@ -70,6 +72,7 @@ class ColorBlockGame extends FlameGame {
 
     // Load High Score and display
     highScore = await PrefsManager.getHighScore();
+    _startHighScore = highScore;
     highScoreText = TextComponent(
       text: '🏆 $highScore',
       position: Vector2(20, 40),
@@ -85,20 +88,12 @@ class ColorBlockGame extends FlameGame {
     );
     add(highScoreText);
 
-    // Add Score (Current Game)
-    scoreText = TextComponent(
-      text: '0',
-      position: Vector2(gameWidth / 2, 90),
-      anchor: Anchor.topCenter,
-      textRenderer: TextPaint(
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 48,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+    // Add Score (Current Game) with a beating heart background
+    final heartScore = HeartScoreComponent(
+      position: Vector2(gameWidth / 2, 110),
     );
-    add(scoreText);
+    add(heartScore);
+    scoreText = heartScore.scoreText;
 
     // Calculate Grid Size and Position dynamically to prevent overlapping with scores/bottom blocks.
     double topPadding = 145.0; // Space for high score (y=40) and current score (y=90) plus padding
@@ -341,11 +336,14 @@ class ColorBlockGame extends FlameGame {
 
   void addScore(int points) {
     score += points;
-    scoreText.text = '$score';
+    // The rolling score inside HeartScoreComponent will catch up automatically
     if (score > highScore) {
       highScore = score;
       highScoreText.text = '🏆 $highScore';
       PrefsManager.saveHighScore(score);
+      if (score > _startHighScore && score > 0) {
+        isNewRecord = true;
+      }
     }
   }
 
@@ -393,7 +391,11 @@ class ColorBlockGame extends FlameGame {
     if (!canMove) {
       // Game Over
       failPool.start();
-      overlays.add('GameOver');
+      if (isNewRecord) {
+        overlays.add('NewRecord');
+      } else {
+        overlays.add('GameOver');
+      }
     }
   }
 
@@ -453,12 +455,16 @@ class ColorBlockGame extends FlameGame {
 
   void reset() {
     score = 0;
-    scoreText.text = '0';
+    // The rolling score inside HeartScoreComponent will reset automatically
     comboCount = 0; // Reset turn-by-turn combo
     placementCount = 0; // Reset placement counter
+    isNewRecord = false;
+    if (overlays.isActive('GameOver')) overlays.remove('GameOver');
+    if (overlays.isActive('NewRecord')) overlays.remove('NewRecord');
     // Refresh high score just in case
     PrefsManager.getHighScore().then((val) {
       highScore = val;
+      _startHighScore = val;
       highScoreText.text = '🏆 $highScore';
     });
     gridBoard.clear();
