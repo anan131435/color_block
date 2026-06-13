@@ -310,7 +310,17 @@ class ColorBlockGame extends FlameGame {
       // Trigger vibration feedback and play audio sequence
       if (points > 10) {
         // Clear lines (Score is 10 + totalLines * 100 + bonus)
-        HapticFeedback.vibrate();
+        int linesCleared = 0;
+        if (points == 110) linesCleared = 1;
+        else if (points == 260) linesCleared = 2;
+        else if (points == 410) linesCleared = 3;
+        else if (points == 560) linesCleared = 4;
+        
+        if (linesCleared > 0) {
+          _triggerVibrations(linesCleared);
+        } else {
+          HapticFeedback.vibrate();
+        }
         _playClearSequence(points);
       } else {
         // Just place block (Score is 10)
@@ -417,30 +427,40 @@ class ColorBlockGame extends FlameGame {
 
       // Play combo sound if consecutive turns are cleared
       if (comboCount >= 2) {
-        comboPool.start();
+        // combo X 1 (comboCount==2) -> 0.4 volume
+        // combo X 2 (comboCount==3) -> 0.7 volume
+        // combo X 3+ (comboCount>=4) -> 1.0 volume
+        double comboVolume = 0.5;
+        if (comboCount == 3) {
+          comboVolume = 0.8;
+        } else if (comboCount >= 4) {
+          comboVolume = 1.0;
+        }
+        comboPool.start(volume: comboVolume);
+
         add(FeedbackTextEffect(
           text: 'COMBO x$comboCount!',
           textColor: const Color(0xFF00E5FF), // Cyan for combos
           position: textPos,
         ));
       } else {
-        // Play multiclear sounds for single placements
+        // Play multiclear sounds for single placements (volume kept consistent at 0.2, one level lower than combo X 1)
         if (linesCleared == 1) {
-          goodPool.start();
+          goodPool.start(volume: 0.5);
           add(FeedbackTextEffect(
             text: 'GOOD!',
             textColor: const Color(0xFF00E676), // Vibrant green
             position: textPos,
           ));
         } else if (linesCleared == 2) {
-          greatPool.start();
+          greatPool.start(volume: 0.5);
           add(FeedbackTextEffect(
             text: 'GREAT!',
             textColor: const Color(0xFFFFEB3B), // Yellow like "COLOR" on home page
             position: textPos,
           ));
         } else if (linesCleared >= 3) {
-          excellentPool.start();
+          excellentPool.start(volume: 0.5);
           add(FeedbackTextEffect(
             text: 'EXCELLENT!!',
             textColor: const Color(0xFFFF5722), // Orange/Red like "BLOCK" on home page
@@ -450,6 +470,16 @@ class ColorBlockGame extends FlameGame {
       }
     } catch (e) {
       print('Error playing clear sound sequence: $e');
+    }
+  }
+
+  Future<void> _triggerVibrations(int linesCleared) async {
+    final int count = min(linesCleared, 3); // Capped at 3 vibrations
+    for (int i = 0; i < count; i++) {
+      if (i > 0) {
+        await Future.delayed(const Duration(milliseconds: 320));
+      }
+      HapticFeedback.vibrate();
     }
   }
 

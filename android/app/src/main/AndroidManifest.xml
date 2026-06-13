@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
-        android:label="Color Block"
+        android:label="ColorBlock Crush"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
