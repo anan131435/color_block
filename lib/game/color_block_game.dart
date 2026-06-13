@@ -4,6 +4,7 @@ import 'package:flame_audio/flame_audio.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'config.dart';
 import '../storage/prefs_manager.dart';
 import 'components/grid_board.dart';
@@ -93,7 +94,7 @@ class ColorBlockGame extends FlameGame {
       position: Vector2(gameWidth / 2, 110),
     );
     add(heartScore);
-    scoreText = heartScore.scoreText;
+    scoreText = TextComponent(text: '0');
 
     // Calculate Grid Size and Position dynamically to prevent overlapping with scores/bottom blocks.
     double topPadding = 145.0; // Space for high score (y=40) and current score (y=90) plus padding
@@ -475,11 +476,21 @@ class ColorBlockGame extends FlameGame {
 
   Future<void> _triggerVibrations(int linesCleared) async {
     final int count = min(linesCleared, 3); // Capped at 3 vibrations
+    final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    
     for (int i = 0; i < count; i++) {
       if (i > 0) {
-        await Future.delayed(const Duration(milliseconds: 320));
+        // iOS heavyImpact is very short, so 280ms is perfect for distinct taps.
+        // Android standard vibrate is longer, so we need 450ms to avoid overlapping.
+        final int delayMs = isIOS ? 280 : 450;
+        await Future.delayed(Duration(milliseconds: delayMs));
       }
-      HapticFeedback.vibrate();
+      
+      if (isIOS) {
+        await HapticFeedback.heavyImpact();
+      } else {
+        await HapticFeedback.vibrate();
+      }
     }
   }
 

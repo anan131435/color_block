@@ -1,8 +1,10 @@
 import 'dart:ui';
+import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import '../config.dart';
 import 'block_renderer.dart';
+import 'clear_effects.dart';
 
 import '../color_block_game.dart';
 
@@ -288,11 +290,44 @@ class GridBoard extends PositionComponent
 
     // Clear Logic
     if (rowsToClear.isNotEmpty || colsToClear.isNotEmpty) {
+      // Find row colors first (prior to clearing cell colors to null)
+      final Map<int, Color> rowColors = {};
+      for (int r in rowsToClear) {
+        Color? rowColor;
+        for (int c = 0; c < GameConfigFile.gridCols; c++) {
+          if (gridState[r][c] != null) {
+            rowColor = gridState[r][c];
+            break;
+          }
+        }
+        rowColors[r] = rowColor ?? GameConfigFile.color1;
+      }
+
+      // Find col colors first (prior to clearing cell colors to null)
+      final Map<int, Color> colColors = {};
+      for (int c in colsToClear) {
+        Color? colColor;
+        for (int r = 0; r < GameConfigFile.gridRows; r++) {
+          if (gridState[r][c] != null) {
+            colColor = gridState[r][c];
+            break;
+          }
+        }
+        colColors[c] = colColor ?? GameConfigFile.color2;
+      }
 
       // Capture cells for animation
       List<({int row, int col, Color color})> animatingCells = [];
 
       for (int r in rowsToClear) {
+        // Spawn Horizontal Laser Clear Effect
+        add(LaserClearEffect(
+          isHorizontal: true,
+          laserColor: rowColors[r]!,
+          position: Vector2(0, r * cellHeight),
+          size: Vector2(width, cellHeight),
+        ));
+
         for (int c = 0; c < GameConfigFile.gridCols; c++) {
           if (gridState[r][c] != null) {
             animatingCells.add((row: r, col: c, color: gridState[r][c]!));
@@ -301,6 +336,14 @@ class GridBoard extends PositionComponent
         }
       }
       for (int c in colsToClear) {
+        // Spawn Vertical Laser Clear Effect
+        add(LaserClearEffect(
+          isHorizontal: false,
+          laserColor: colColors[c]!,
+          position: Vector2(c * cellWidth, 0),
+          size: Vector2(cellWidth, height),
+        ));
+
         for (int r = 0; r < GameConfigFile.gridRows; r++) {
           if (gridState[r][c] != null) {
             animatingCells.add((row: r, col: c, color: gridState[r][c]!));
@@ -309,9 +352,35 @@ class GridBoard extends PositionComponent
         }
       }
 
-      // Add to animation list
+      // Add to animation list and spawn particles
       if (animatingCells.isNotEmpty) {
         _activeAnimations.add(_ClearAnimation(cells: animatingCells));
+
+        // Spawn Star Particles for each cleared cell
+        final rng = Random();
+        for (final cell in animatingCells) {
+          final cellCenter = Vector2(
+            (cell.col + 0.5) * cellWidth,
+            (cell.row + 0.5) * cellHeight,
+          );
+
+          // Burst 10 star particles per cell
+          for (int i = 0; i < 10; i++) {
+            final double angle = rng.nextDouble() * 2 * pi;
+            final double speed = 40.0 + rng.nextDouble() * 150.0;
+            final velocity = Vector2(cos(angle), sin(angle)) * speed;
+            final double spin = -5.0 + rng.nextDouble() * 10.0;
+            final double lifetime = 0.45 + rng.nextDouble() * 0.35;
+
+            add(StarParticle(
+              position: cellCenter,
+              velocity: velocity,
+              color: cell.color,
+              maxLifetime: lifetime,
+              spinSpeed: spin,
+            ));
+          }
+        }
       }
     }
 

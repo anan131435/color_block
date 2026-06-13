@@ -4,38 +4,127 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../color_block_game.dart';
 
+class DigitComponent extends PositionComponent {
+  String _char = '0';
+  Color color;
+  double _scaleAnim = 1.0;
+  double _offsetY = 0.0;
+  double _animTime = 0.0;
+  bool _isAnimating = false;
+  
+  DigitComponent({required String char, required this.color, required super.position}) : _char = char {
+    anchor = Anchor.center;
+    size = Vector2(14, 24); // Size of a single digit
+  }
+  
+  set char(String newChar) {
+    if (_char != newChar) {
+      _char = newChar;
+      // Trigger bounce animation
+      _isAnimating = true;
+      _animTime = 0.0;
+    }
+  }
+  
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_isAnimating) {
+      _animTime += dt;
+      const double duration = 0.22; // 220ms bounce
+      if (_animTime >= duration) {
+        _isAnimating = false;
+        _scaleAnim = 1.0;
+        _offsetY = 0.0;
+      } else {
+        double progress = _animTime / duration;
+        // Lift and scale bounce curve using sine wave
+        _scaleAnim = 1.0 + sin(progress * pi) * 0.45;
+        _offsetY = -sin(progress * pi) * 10.0;
+      }
+    }
+  }
+  
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    
+    final textPaint = TextPaint(
+      style: GoogleFonts.fredoka(
+        color: color,
+        fontSize: 22, // Proportionate font size inside heart
+        fontWeight: FontWeight.w900,
+        shadows: [
+          const Shadow(
+            color: Colors.black38,
+            offset: Offset(0, 1.5),
+            blurRadius: 3,
+          ),
+        ],
+      ),
+    );
+    
+    canvas.save();
+    canvas.translate(0, _offsetY);
+    canvas.scale(_scaleAnim);
+    textPaint.render(
+      canvas,
+      _char,
+      Vector2(width / 2, height / 2),
+      anchor: Anchor.center,
+    );
+    canvas.restore();
+  }
+}
+
 class HeartScoreComponent extends PositionComponent with HasGameReference<ColorBlockGame> {
   double _time = 0;
   double _visualScore = 0;
-  late TextComponent scoreText;
+  final List<DigitComponent> _digitComponents = [];
+  
+  static const List<Color> rainbowColors = [
+    Color(0xFF00E5FF), // Light Blue
+    Color(0xFFFF4081), // Pink
+    Color(0xFFFFB300), // Orange
+    Color(0xFF00E676), // Green
+    Color(0xFFD500F9), // Purple
+  ];
   
   HeartScoreComponent({required super.position}) : super(size: Vector2(92, 85), anchor: Anchor.center);
   
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    
-    // Add Score Text as a child of the heart so it scales together
-    scoreText = TextComponent(
-      text: '0',
-      anchor: Anchor.center,
-      position: Vector2(width / 2, height * 0.44), // Slightly above center for visual balance inside the heart
-      textRenderer: TextPaint(
-        style: GoogleFonts.fredoka(
-          color: Colors.white,
-          fontSize: 24, // Adjusted font size to fit inside the smaller heart
-          fontWeight: FontWeight.w900,
-          shadows: [
-            const Shadow(
-              color: Colors.black45,
-              offset: Offset(0, 2),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-      ),
-    );
-    add(scoreText);
+    _updateDigits('0');
+  }
+  
+  void _updateDigits(String scoreStr) {
+    // If the number of digits changed, rebuild all digit components
+    if (_digitComponents.length != scoreStr.length) {
+      for (final comp in _digitComponents) {
+        comp.removeFromParent();
+      }
+      _digitComponents.clear();
+      
+      final double digitSpacing = 13.0; // Spacing between digits
+      final double totalWidth = scoreStr.length * digitSpacing;
+      final double startX = (width - totalWidth) / 2;
+      
+      for (int i = 0; i < scoreStr.length; i++) {
+        final comp = DigitComponent(
+          char: scoreStr[i],
+          color: rainbowColors[i % rainbowColors.length],
+          position: Vector2(startX + i * digitSpacing + digitSpacing / 2, height * 0.42),
+        );
+        add(comp);
+        _digitComponents.add(comp);
+      }
+    } else {
+      // Otherwise, just update characters (they will bounce if they changed)
+      for (int i = 0; i < scoreStr.length; i++) {
+        _digitComponents[i].char = scoreStr[i];
+      }
+    }
   }
   
   @override
@@ -56,14 +145,12 @@ class HeartScoreComponent extends PositionComponent with HasGameReference<ColorB
     // Score interpolation (rolling score)
     if (_visualScore < game.score) {
       double diff = game.score - _visualScore;
-      // Rolling speed depends on difference, ensuring it finishes in ~0.5s
       double speed = max(30.0, diff * 4.0);
       _visualScore = min(game.score.toDouble(), _visualScore + speed * dt);
-      scoreText.text = '${_visualScore.round()}';
+      _updateDigits('${_visualScore.round()}');
     } else if (_visualScore > game.score) {
-      // Handles reset
       _visualScore = game.score.toDouble();
-      scoreText.text = '${game.score}';
+      _updateDigits('${game.score}');
     }
   }
   
@@ -78,7 +165,6 @@ class HeartScoreComponent extends PositionComponent with HasGameReference<ColorB
     
     final Path heartPath = _getHeartPath(width, height);
     
-    // Offset glow slightly
     canvas.save();
     canvas.translate(0, 2);
     canvas.drawPath(heartPath, glowPaint);
@@ -104,7 +190,6 @@ class HeartScoreComponent extends PositionComponent with HasGameReference<ColorB
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
       
-    // Draw a subtle curve highlight on the left lobe
     final Path highlightPath = Path();
     highlightPath.moveTo(width * 0.25, height * 0.15);
     highlightPath.quadraticBezierTo(width * 0.12, height * 0.2, width * 0.12, height * 0.4);
@@ -113,37 +198,11 @@ class HeartScoreComponent extends PositionComponent with HasGameReference<ColorB
   
   Path _getHeartPath(double w, double h) {
     final path = Path();
-    // Start at top middle cleft
     path.moveTo(w / 2, h * 0.25);
-    
-    // Left lobe curve
-    path.cubicTo(
-      w * 0.15, h * 0.0,
-      0, h * 0.2,
-      0, h * 0.48,
-    );
-    
-    // Left bottom curve to tip
-    path.cubicTo(
-      0, h * 0.72,
-      w * 0.25, h * 0.88,
-      w / 2, h * 0.98,
-    );
-    
-    // Right bottom curve to tip
-    path.cubicTo(
-      w * 0.75, h * 0.88,
-      w, h * 0.72,
-      w, h * 0.48,
-    );
-    
-    // Right lobe curve
-    path.cubicTo(
-      w, h * 0.2,
-      w * 0.85, h * 0.0,
-      w / 2, h * 0.25,
-    );
-    
+    path.cubicTo(w * 0.15, h * 0.0, 0, h * 0.2, 0, h * 0.48);
+    path.cubicTo(0, h * 0.72, w * 0.25, h * 0.88, w / 2, h * 0.98);
+    path.cubicTo(w * 0.75, h * 0.88, w, h * 0.72, w, h * 0.48);
+    path.cubicTo(w, h * 0.2, w * 0.85, h * 0.0, w / 2, h * 0.25);
     path.close();
     return path;
   }
