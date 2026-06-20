@@ -68,6 +68,18 @@ class PrefsManager {
     await prefs.setString(_keyLastPlayedDate, todayStr);
   }
 
+  static const String _keyPrivacyAccepted = 'privacy_accepted';
+
+  static Future<bool> isPrivacyAccepted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyPrivacyAccepted) ?? false;
+  }
+
+  static Future<void> acceptPrivacy() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPrivacyAccepted, true);
+  }
+
   static String _formatDate(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
